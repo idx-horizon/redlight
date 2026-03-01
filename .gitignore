@@ -4,13 +4,16 @@ __pycache__/
 *.pyo
 
 .env
-
+*.BAK
+*.OLD
 # Virtualenv
 myvenv/
 venv/
 
 # Data files (optional)
 data/*.csv
+data/*.db
+data/*.DB
 
 # Logs
 *.log

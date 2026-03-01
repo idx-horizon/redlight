@@ -6,6 +6,7 @@ import math
 import sqlite3
 
 from auth import requires_permission
+from utils.db import get_db
 
 BP="parkrun"
 parkrun_bp = Blueprint(BP, __name__, url_prefix=f"/{BP}")
@@ -14,7 +15,7 @@ parkrun_bp = Blueprint(BP, __name__, url_prefix=f"/{BP}")
 # Paths
 # ---------------------------------------------------
 
-PKRGEO_DB_PATH = '/home/redagent/apps/website/PKRGEO.DB'
+PKRGEO_DB_PATH = '/home/redagent/apps/website/data/PKRGEO.DB'
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(BASE_DIR, "data")
@@ -293,3 +294,67 @@ def countries():
                 "parkrun/countries.html",
                  page_title="Countries",
                  countries=countries_data)
+
+from utils.geo import sqlite_distance_expr
+
+@parkrun_bp.route("/events")
+@login_required
+def events():
+    db = get_db(PKRGEO_DB_PATH)
+    user_lat = 51.5074
+    user_lon = -0.1278
+
+    country = request.args.get("country") or ""
+    series = request.args.get("series") or "standard"
+    search = request.args.get("search", "").strip()
+    page = int(request.args.get("page", 1))
+    per_page = 50
+    offset = (page - 1) * per_page
+
+    # SQLite snippet for distance
+    distance_sql = sqlite_distance_expr(user_lat, user_lon)
+
+    # Base query
+    query = f"""
+        SELECT *, {distance_sql}
+        FROM vw_events_enriched
+        WHERE 1=1
+    """
+    params = []
+
+    if country:
+        query += " AND country_name = ?"
+        params.append(country)
+
+    if series == "standard":
+        query += " AND seriesid = 1"
+    elif series == "junior":
+        query += " AND seriesid = 2"
+
+    if search:
+        search_pattern = search.replace("*", "%")
+        query += " AND LOWER(long_name) LIKE LOWER(?)"
+        params.append(search_pattern)
+
+    # Count total rows
+    count_query = f"SELECT COUNT(*) FROM ({query})"
+    total_rows = db.execute(count_query, params).fetchone()[0]
+
+    # Order by distance
+    query += " ORDER BY distance_km ASC LIMIT ? OFFSET ?"
+    params.extend([per_page, offset])
+
+    events = db.execute(query, params).fetchall()
+    total_pages = (total_rows + per_page - 1) // per_page
+
+    return render_template(
+        "parkrun/events.html",
+        events=events,
+        countries=db.execute("SELECT DISTINCT country_name FROM vw_events_enriched ORDER BY country_name").fetchall(),
+        selected_country=country,
+        selected_series=series,
+        search=search,
+        page=page,
+        total_pages=total_pages,
+        total_events=total_rows
+    )

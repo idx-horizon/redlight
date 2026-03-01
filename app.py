@@ -8,8 +8,9 @@ from werkzeug.exceptions import HTTPException
 import logging
 from logging.handlers import RotatingFileHandler
 import traceback
-from utils.security import is_safe_url
 
+from utils.security import is_safe_url
+from utils.db import close_dbs
 from utils.sidebar import get_sidebar_items
 
 # ---------------------------------------------------
@@ -309,6 +310,9 @@ app.register_blueprint(parkrun_bp)
 app.register_blueprint(tx_bp)
 app.register_blueprint(personal_bp)
 app.register_blueprint(admin_bp)
+
+# Ensure all DB connections are closed at the end of each request
+app.teardown_appcontext(close_dbs)
 
 if __name__ == "__main__":
     app.run(debug=True)
