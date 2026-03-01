@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Admin Logs</h2>
+
+    <div class="mb-2">
+        <button id="pause-btn" class="btn btn-outline-secondary btn-sm">Pause</button>
+        <button id="resume-btn" class="btn btn-outline-secondary btn-sm">Resume</button>
+        <button id="clear-btn" class="btn btn-outline-secondary btn-sm">Clear</button>
+    </div>
+
+    <pre id="log" style="height:500px; overflow:auto; background:#111; color:#eee; padding:10px; border-radius:4px;">{% for line in lines -%}{{ line }}
+{% endfor %}</pre>
+</div>
+
+<script type="text/javascript">
+const logEl = document.getElementById("log");
+let paused = false;
+
+// Append a line and autoscroll if not paused
+function append(line) {
+    if (!paused) {
+        logEl.textContent += line + "\n";
+        logEl.scrollTop = logEl.scrollHeight;
+    }
+}
+
+// Connect to SSE endpoint
+function connect() {
+    const source = new EventSource("{{ url_for('admin.admin_log_stream') }}");
+
+    source.onmessage = function(event) {
+        if (event.data !== ": ping") {
+            append(event.data);
+        }
+    };
+
+    source.onerror = function(e) {
+        console.error("SSE error:", e);
+        setTimeout(connect, 3000); // auto-reconnect after 3s
+    };
+}
+
+// Button handlers
+document.getElementById("pause-btn").addEventListener("click", () => { paused = true; });
+document.getElementById("resume-btn").addEventListener("click", () => { paused = false; });
+document.getElementById("clear-btn").addEventListener("click", () => { logEl.textContent = ""; });
+
+
+// scroll to bottom on page load
+window.addEventListener("load", () => {
+    logEl.scrollTop = logEl.scrollHeight;
+});
+
+// Start SSE connection
+connect();
+</script>
+{% endblock %}

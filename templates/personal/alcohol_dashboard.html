@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+
+  <form method="get" class="row g-2 align-items-end mb-3">
+
+    <div class="col-auto">
+      <label class="form-label small text-muted">From</label>
+      <input type="date" name="start_date" value="{{ start_date }}" class="form-control">
+    </div>
+
+    <div class="col-auto">
+      <label class="form-label small text-muted">To</label>
+      <input type="date" name="end_date" value="{{ end_date }}" class="form-control">
+    </div>
+
+    <div class="col-auto">
+      <button type="submit" class="btn btn-primary">Filter</button>
+    </div>
+
+    <div class="col-auto">
+      <a href="{{url_for('personal.alcohol') }}" class="btn btn-outline-secondary">Reset</a>
+    </div>
+
+  </form>
+
+  <div class="mb-3">
+    <a href="{{ url_for('personal.alcohol', range='7d') }}"
+       class="btn btn-sm btn-outline-secondary">Last 7 days</a>
+
+    <a href="{{ url_for('personal.alcohol', range='30d') }}"
+       class="btn btn-sm btn-outline-secondary">Last 30 days</a>
+
+    <a href="{{ url_for('personal.alcohol', range='All') }}"
+       class="btn btn-sm btn-outline-secondary">All</a>
+  </div>
+
+  <!-- Summary cards -->
+  <div class="row text-center mb-4">
+    <div class="col-4">
+      <div class="card">
+        <div class="card-body">
+          <div class="small text-muted">Total</div>
+          <div class="h4">{{ total }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-4">
+      <div class="card">
+        <div class="card-body">
+          <div class="small text-muted">Average</div>
+          <div class="h4">{{ avg }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-4">
+      <div class="card">
+        <div class="card-body">
+          <div class="small text-muted">Dry days</div>
+          <div class="h4">{{ dry_days }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart -->
+  <div class="card text-light">
+    <div class="card-body bg-white">
+      <canvas id="alcoholChart"></canvas>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+const labels = {{ labels | tojson }};
+const values = {{ values | tojson }};
+
+new Chart(document.getElementById("alcoholChart"), {
+    type: "bar",
+    data: {
+        labels: labels,
+        datasets: [{
+            label: "Units",
+            data: values,
+            backgroundColor: "#9ec5fe",   // light blue fill
+            borderColor: "#6ea8fe",       // slightly darker edge
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: { display: false }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                title: { display: true, text: "Units" }
+            }
+        }
+    }
+});
+</script>
+{% endblock %}

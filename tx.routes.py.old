@@ -1,0 +1,97 @@
+from flask import Blueprint, render_template, request, current_app
+import pandas as pd
+import os
+import math
+import json
+
+tx_bp = Blueprint(
+           "tx",
+            __name__, 
+            url_prefix="/tx"
+)
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA_DIR = os.path.join(BASE_DIR, "data")
+
+TX_CSV = os.path.join(DATA_DIR, "tx.csv")
+
+@tx_bp.route("/",methods=['POST','GET'])
+def dashboard():
+    df = pd.read_csv(TX_CSV)
+
+    # Clean and normalize columns
+    df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_")
+    df["amount"] = pd.to_numeric(df["amount"].astype(str).str.replace(",",""), errors="coerce")
+    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+
+    # Drop rows with missing amount or date
+    df = df.dropna(subset=["amount","date","supplier"])
+
+    # Supplier summary
+    supplier_summary = df.groupby("supplier").agg(
+        total_amount=pd.NamedAgg(column="amount", aggfunc="sum"),
+        total_rows=pd.NamedAgg(column="amount", aggfunc="count")
+    ).reset_index()
+
+    # Monthly trends
+    df["month"] = df["date"].dt.to_period("M").dt.to_timestamp()
+    monthly_trends = df.groupby(["month","supplier"]).agg(
+        monthly_total=pd.NamedAgg(column="amount", aggfunc="sum")
+    ).reset_index()
+    # Convert month to string in YYYY-MM format for JS
+    monthly_trends["month"] = monthly_trends["month"].dt.strftime("%Y-%m")
+
+    # Top 20 expense areas
+    top_expense_areas = df.groupby(["expense_area","supplier"]).agg(
+        total_amount=pd.NamedAgg(column="amount", aggfunc="sum")
+    ).reset_index().sort_values("total_amount", ascending=False).head(20)
+
+    print(json.dumps(monthly_trends.to_dict(orient="records")[:5], indent=2))
+
+    # Pass to template
+    return render_template(
+        "tx/tx_dashboard.html",
+        supplier_summary=supplier_summary.to_dict(orient="records"),
+        monthly_trends=monthly_trends.to_dict(orient="records"),
+        top_expense_areas=top_expense_areas.to_dict(orient="records")
+    )
+
+def xdashboard():
+    # --- load dataset ---
+    df = pd.read_csv(TX_CSV)
+
+    # Ensure column names are DB-safe normalized
+    df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_")
+
+    # --- clean amount and date ---
+    df["amount"] = pd.to_numeric(df["amount"], errors="coerce")
+    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+
+    # --- supplier summary ---
+    supplier_summary = df.groupby("supplier").agg(
+        total_amount=pd.NamedAgg(column="amount", aggfunc="sum"),
+        total_rows=pd.NamedAgg(column="amount", aggfunc="count")
+    ).sort_values("total_amount", ascending=False).reset_index()
+
+    # --- monthly trends ---
+    df["month"] = df["date"].dt.to_period("M")
+    monthly_trends = df.groupby(["month", "supplier"]).agg(
+        monthly_total=pd.NamedAgg(column="amount", aggfunc="sum")
+    ).reset_index()
+    monthly_trends["month"] = monthly_trends["month"].dt.strftime("%Y-%m")
+
+    # --- top expense areas ---
+    top_expense_areas = df.groupby(["expense_area", "supplier"]).agg(
+        total_amount=pd.NamedAgg(column="amount", aggfunc="sum")
+    ).reset_index()
+    top_expense_areas = top_expense_areas.sort_values("total_amount", ascending=False).head(20)
+
+    # --- prepare context for template ---
+    context = {
+        "supplier_summary": supplier_summary.to_dict(orient="records"),
+        "monthly_trends": monthly_trends.to_dict(orient="records"),
+        "top_expense_areas": top_expense_areas.to_dict(orient="records")
+    }
+
+    return render_template("tx/tx_dashboard.html", **context)
+

@@ -1,0 +1,20 @@
+# Python
+*.pyc
+__pycache__/
+*.pyo
+
+.env
+
+# Virtualenv
+myvenv/
+venv/
+
+# Data files (optional)
+data/*.csv
+
+# Logs
+*.log
+
+# IDE/project files
+.idea/
+.vscode/

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row g-3">
+
+        {% for event in events %}
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+
+                    <h5 class="card-title">
+                       <span class="me-1">{{ event.icon }}</span>
+                       {{ event.label }}
+                    </h5>
+
+                    <p class="card-text text-muted">
+                        {{ event.date }}
+                    </p>
+
+                    {% if event.days_left > 0 %}
+                        <h3 class="mb-0">{{ event.days_left }} days</h3>
+                    {% elif event.days_left == 0 %}
+                        <h3 class="mb-0 text-success">Today</h3>
+                    {% else %}
+                        <h3 class="mb-0 text-muted">Passed</h3>
+                    {% endif %}
+
+                    <div class="progress mt-2" style="height:6px;">
+                       <div class="progress-bar" role="progressbar"
+                           style="width: {{ event.progress }}%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Logs{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <!-- Controls -->
+    <div class="d-flex align-items-center mb-2">
+
+        <button id="toggle-btn" class="btn btn-outline-secondary btn-sm me-2">
+            Pause
+        </button>
+
+        <button id="clear-btn" class="btn btn-outline-secondary btn-sm me-2">
+            Clear
+        </button>
+
+        <select id="level-filter" class="form-select form-select-sm w-auto me-2">
+            <option value="ALL">All</option>
+            <option value="DEBUG">Debug</option>
+            <option value="INFO">Info</option>
+            <option value="WARNING">Warning</option>
+            <option value="ERROR">Error</option>
+        </select>
+
+        <input type="text" id="text-filter" class="form-control form-control-sm w-auto me-2" placeholder="Search text...">
+
+        <span id="stream-status" class="text-muted small"></span>
+    </div>
+
+    <!-- Log display -->
+    <pre id="log" style="height:500px; overflow:auto; background:#111; color:#eee; padding:10px; border-radius:4px; font-family:monospace; white-space:pre;"></pre>
+</div>
+
+<script>
+const logEl = document.getElementById("log");
+const toggleBtn = document.getElementById("toggle-btn");
+const clearBtn = document.getElementById("clear-btn");
+const statusEl = document.getElementById("stream-status");
+const filterEl = document.getElementById("level-filter");
+const textFilterEl = document.getElementById("text-filter");
+
+let paused = false;
+let buffer = [];
+let currentFilter = "ALL";
+let textFilter = "";
+
+// ---------- Helpers ----------
+function scrollToBottom() {
+    logEl.scrollTop = logEl.scrollHeight;
+}
+
+function updateUI() {
+    if (paused) {
+        toggleBtn.textContent = "Resume";
+        toggleBtn.classList.add("opacity-75");
+        toggleBtn.style.borderStyle = "dashed";
+        statusEl.textContent = "Paused";
+    } else {
+        toggleBtn.textContent = "Pause";
+        toggleBtn.classList.remove("opacity-75");
+        toggleBtn.style.borderStyle = "solid";
+        statusEl.textContent = "Live";
+    }
+}
+
+// ---------- Filters ----------
+filterEl.addEventListener("change", () => {
+    currentFilter = filterEl.value;
+    rebuildLog();
+});
+
+textFilterEl.addEventListener("input", () => {
+    textFilter = textFilterEl.value.toLowerCase();
+    rebuildLog();
+});
+
+function passesFilter(line) {
+    if (currentFilter !== "ALL" && !line.includes(currentFilter)) return false;
+    if (textFilter && !line.toLowerCase().includes(textFilter)) return false;
+    return true;
+}
+
+function colourLine(line) {
+    if (line.includes("ERROR")) return `<span style="color:#ff6b6b">${line}</span>`;
+    if (line.includes("WARNING")) return `<span style="color:#ffa500">${line}</span>`;
+    if (line.includes("DEBUG")) return `<span style="color:#6bcfff">${line}</span>`;
+    if (line.includes("INFO")) return `<span style="color:#ccc">${line}</span>`;
+    return line;
+}
+
+// ---------- Log append ----------
+function append(line) {
+    if (!passesFilter(line)) return;
+
+    const coloured = colourLine(line);
+
+    if (paused) {
+        buffer.push(coloured);
+        return;
+    }
+
+    logEl.innerHTML += coloured + "<br>";
+    scrollToBottom();
+}
+
+// ---------- Rebuild log on filter change ----------
+function rebuildLog() {
+    // Combine buffer + current displayed lines
+    const allLines = buffer.concat(logEl.innerHTML.split("<br>").map(l => l.replace(/<[^>]+>/g, "")));
+    logEl.innerHTML = "";
+    buffer = [];
+
+    allLines.forEach(line => {
+        if (line.trim() !== "") append(line);
+    });
+}
+
+// ---------- SSE ----------
+function connect() {
+    const source = new EventSource("{{ url_for('admin.admin_log_stream') }}");
+
+    source.onmessage = function(event) {
+        if (event.data !== ": ping") {
+            append(event.data);
+        }
+    };
+
+    source.onerror = function(e) {
+        console.error("SSE connection lost — retrying...");
+        setTimeout(connect, 3000);
+    };
+}
+
+// ---------- Controls ----------
+toggleBtn.addEventListener("click", () => {
+    paused = !paused;
+
+    if (!paused && buffer.length) {
+        buffer.forEach(line => logEl.innerHTML += line + "<br>");
+        buffer = [];
+        scrollToBottom();
+    }
+
+    updateUI();
+});
+
+clearBtn.addEventListener("click", () => {
+    logEl.innerHTML = "";
+});
+
+// ---------- Init ----------
+window.addEventListener("load", () => {
+    // Preload last lines if any
+    const preloaded = `{% for line in lines -%}{{ line }}\n{% endfor %}`.split("\n").filter(l => l.trim() !== "");
+    preloaded.forEach(line => append(line));
+    scrollToBottom();
+    updateUI();
+});
+
+// Start SSE
+connect();
+</script>
+{% endblock %}

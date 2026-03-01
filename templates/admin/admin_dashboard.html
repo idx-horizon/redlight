@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<!-- Summary cards -->
+<div class="row mb-4">
+
+  <div class="col-md-4">
+    <div class="card text-center">
+      <div class="card-body">
+        <h5>Total Users</h5>
+        <h2>{{ stats.total_users }}</h2>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="card">
+  <div class="card-header">Users</div>
+
+  <table class="table mb-0">
+    <thead>
+      <tr>
+        <th>Username</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for username in users %}
+      <tr {% if username == current_user.username %}class="table-primary"{% endif %}>
+        <td>{{ username }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<hr class="my-4">
+
+{% endblock %}

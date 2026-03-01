@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+const suppliers = {{ suppliers | tojson }};<P><P>
+const chartLabels = {{ chart_labels | tojson }};<P><P>
+const chartDatasets = {{ chart_datasets | tojson }};<P><P>
+const supplierColors = {{ supplier_colors | tojson }};<P><P>
+const supplierSummary = {{ supplier_summary | tojson }};<P><P>
+const monthlyTable = {{ monthly_table | tojson }};<P><P>
+
+
+<div class="container-fluid">
+
+    <!-- Supplier selector -->
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <select id="supplierSelect" class="form-select">
+                {% for supplier in suppliers %}
+                    <option value="{{ supplier }}">{{ supplier }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <!-- Summary card -->
+    <div class="row g-3 mb-3">
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
+                    <h5 id="cardTitle"></h5>
+
+                    <div class="metric">
+                        <div class="metric-label">Total Spend</div>
+                        <div class="metric-value" id="cardTotal">£0</div>
+                    </div>
+
+                    <div class="metric">
+                        <div class="metric-label">Transactions</div>
+                        <div class="metric-value" id="cardCount">0</div>
+                    </div>
+
+                    <div class="metric">
+                        <div class="metric-label">Date Range</div>
+                        <div class="metric-value" id="cardDates">—</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart -->
+    <div class="card shadow-sm mb-3">
+        <div class="card-body">
+            <canvas id="monthlySpendChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Monthly table -->
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Month</th>
+                        <th>Spend</th>
+                    </tr>
+                </thead>
+                <tbody id="monthlyTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const suppliers = {{ suppliers | tojson }};
+const chartLabels = {{ chart_labels | tojson }};
+const chartDatasets = {{ chart_datasets | tojson }};
+const supplierColors = {{ supplier_colors | tojson }};
+const supplierSummary = {{ supplier_summary | tojson }};
+const monthlyTable = {{ monthly_table | tojson }};
+
+let currentSupplier = suppliers[0];
+
+function formatCurrency(v) {
+    const n = Number(v);
+    return "£" + (isNaN(n) ? 0 : Math.round(n));
+}
+
+const supplierSelect = document.getElementById("supplierSelect");
+supplierSelect.value = currentSupplier;
+
+supplierSelect.addEventListener("change", e => {
+    currentSupplier = e.target.value;
+    updateSummaryCard();
+    updateChart();
+    updateTable();
+});
+
+function updateSummaryCard() {
+    const s = supplierSummary[currentSupplier];
+
+    if (!s) return;
+
+    const minDate = s?.min_date || "—";
+    const maxDate = s?.max_date || "—";
+
+    document.getElementById("cardDates").textContent = minDate + " → " + maxDate;
+
+    document.getElementById("cardTitle").textContent = currentSupplier;
+    document.getElementById("cardTotal").textContent = formatCurrency(s.total_amount);
+    document.getElementById("cardCount").textContent = s?.transaction_count || 0;
+    // document.getElementById("cardCount").textContent = s.transaction_count.toLocaleString();
+    // document.getElementById("cardDates").textContent = s.min_date + " → " + s.max_date;
+}
+
+const chartCanvas = document.getElementById("monthlySpendChart");
+let monthlyChart = null;
+
+function updateChart() {
+    const dataset = chartDatasets.find(d => d.label === currentSupplier);
+    if (!dataset) return;
+
+    if (monthlyChart) monthlyChart.destroy();
+
+    monthlyChart = new Chart(chartCanvas, {
+        type: "bar",
+        data: {
+            labels: chartLabels,
+            datasets: [{
+                label: dataset.label,
+                data: dataset.data,
+                backgroundColor: supplierColors[currentSupplier]
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: {
+                    ticks: {
+                        callback: v => "£" + v.toLocaleString()
+                    }
+                }
+            }
+        }
+    });
+}
+
+function updateTable() {
+    const rows = monthlyTable.filter(r => r.supplier === currentSupplier);
+
+    const tbody = document.getElementById("monthlyTableBody");
+    tbody.innerHTML = "";
+
+    rows.forEach(r => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td>${r.month}</td>
+            <td>${formatCurrency(r.monthly_total)}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+updateSummaryCard();
+updateChart();
+updateTable();
+
+console.log("TX dashboard ready:", currentSupplier);
+</script>
+
+{% endblock %}

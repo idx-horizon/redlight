@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="text-center mt-5">
+    <h1>Permissions</h1>
+    <p><strong>You don't have permission to view this page</strong></p>
+    <a href="{{ url_for('login') }}" class="btn btn-primary mt-3">Login</a>
+</div>
+{% endblock %}

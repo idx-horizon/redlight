@@ -1,0 +1,153 @@
+from flask import Blueprint, render_template, request, current_app
+import pandas as pd
+import os
+import math
+import json
+from datetime import datetime
+import matplotlib.pyplot as plt
+
+tx_bp = Blueprint(
+           "tx",
+            __name__,
+            url_prefix="/tx"
+)
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA_DIR = os.path.join(BASE_DIR, "data")
+
+TX_CSV = os.path.join(DATA_DIR, "tx.csv")
+
+def load_data():
+    """
+    Robust CSV loader for tx.csv that tolerates:
+    - inconsistent column counts
+    - bad lines
+    - missing values
+    """
+
+#    if not TX_CSV.exists():
+#        current_app.logger.warning(f"{TX_CSV} not found")
+#        return pd.DataFrame()
+
+    try:
+        df = pd.read_csv(
+            TX_CSV,
+            engine="python",
+            on_bad_lines="skip"
+        )
+    except Exception as e:
+        current_app.logger.exception(f"Failed reading {TX_CSV}: {e}", e)
+        return pd.DataFrame()
+
+    # Standardise column names
+    df.columns = [c.strip().lower() for c in df.columns]
+
+    # Ensure required columns exist
+    required = ["date", "supplier", "amount", "expense_area"]
+    for col in required:
+        if col not in df.columns:
+            df[col] = None
+
+    # Clean values
+    df["supplier"] = df["supplier"].astype(str).str.upper().str.strip()
+    df["amount"] = pd.to_numeric(df["amount"], errors="coerce").fillna(0)
+    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+
+    # Keep only suppliers of interest
+    df = df[df["supplier"].isin([
+        "CAPITA PENSION SOLUTIONS LTD",
+        "MYCSP LTD"
+    ])]
+
+    return df
+
+
+@tx_bp.route("/", methods=['POST','GET'])
+def dashboard():
+
+    # --- 1. Load transactions CSV ---
+    df = load_data()
+
+    # Clean up amounts and convert to float
+    df['amount'] = df['amount'].replace({',': ''}, regex=True).astype(float)
+
+    # Standardize supplier names
+    df['supplier'] = df['supplier'].str.upper()
+
+    # --- 2. Compute unique suppliers dynamically ---
+    suppliers = sorted(df['supplier'].unique())
+
+    # --- 3. Dynamic color mapping ---
+    cmap = plt.get_cmap("tab10")
+    supplier_colors = {
+        supplier: f"rgba{tuple(int(c*255) for c in cmap(i/len(suppliers))[:3]) + (0.7,)}"
+        for i, supplier in enumerate(suppliers)
+    }
+
+    # --- 4. Parse month and pivot for chart ---
+#    df['month'] = pd.to_datetime(df['date'], errors='coerce').dt.to_period('M').astype(str)
+#    monthly = df.groupby(['month', 'supplier'], as_index=False)['amount'].sum()
+#    df_pivot = monthly.pivot(index='month', columns='supplier', values='amount').fillna(0)
+
+    # 1. Generate month
+    df['month'] = pd.to_datetime(df['date'], errors='coerce').dt.to_period('M').astype(str)
+
+    # 2. Get all suppliers and all months
+    suppliers = df['supplier'].unique()
+    all_months = pd.period_range(df['date'].min(), df['date'].max(), freq='M').astype(str)
+
+    # 3. Aggregate monthly sums
+    monthly = df.groupby(['month', 'supplier'], as_index=False)['amount'].sum()
+
+    # 4. Create full month × supplier combinations
+    full_index = pd.MultiIndex.from_product([all_months, suppliers], names=['month', 'supplier'])
+    monthly_full = monthly.set_index(['month','supplier']).reindex(full_index, fill_value=0).reset_index()
+
+    # 5. Pivot
+    df_pivot = monthly_full.pivot(index='month', columns='supplier', values='amount')
+
+
+
+    chart_labels = df_pivot.index.astype(str).tolist()
+    chart_datasets = [
+        {
+            "label": supplier,
+            "data": df_pivot[supplier].astype(float).tolist(),
+            "backgroundColor": supplier_colors[supplier]
+        }
+        for supplier in df_pivot.columns
+    ]
+
+    # --- 5️⃣ Summary cards ---
+    supplier_summary = df.groupby('supplier')['amount'].sum().to_dict()
+    supplier_summary = {}
+    for supplier, thisdf in df.groupby("supplier"):
+        total_amount = thisdf["amount"].sum()
+        transaction_count = len(thisdf)
+        min_date = thisdf["date"].min().strftime("%Y-%m-%d")
+        max_date = thisdf["date"].max().strftime("%Y-%m-%d")
+        supplier_summary[supplier] = {
+           "total_amount": total_amount,
+           "transaction_count": transaction_count,
+           "min_date": min_date,
+           "max_date": max_date
+        }
+
+
+    # --- 6️⃣ Monthly table ---
+    monthly_table = monthly_full.rename(columns={"amount": "amount"}).to_dict(orient="records")
+
+    # --- 7️⃣ Top expense areas ---
+    top_expense_areas = df.groupby('expense_area')['amount'].sum().sort_values(ascending=False).head(5).to_dict()
+
+    return render_template(
+        "tx/tx_dashboard.html",
+        chart_labels=chart_labels,
+        chart_datasets=chart_datasets,
+        supplier_colors=supplier_colors,
+        suppliers=suppliers,
+        supplier_summary=supplier_summary,
+        monthly_table=monthly_table,
+        top_expense_areas=top_expense_areas,
+        last_updated=datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+    )

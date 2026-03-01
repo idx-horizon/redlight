@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex align-items-center mb-2">
+
+        <button id="toggle-btn" class="btn btn-outline-secondary btn-sm me-2">
+            Pause
+        </button>
+
+        <button id="clear-btn" class="btn btn-outline-secondary btn-sm me-2">
+            Clear
+        </button>
+
+        <span id="stream-status" class="text-muted small"></span>
+
+        <select id="level-filter" class="form-select form-select-sm w-auto me-2">
+           <option value="ALL">All</option>
+           <option value="DEBUG">Debug</option>
+           <option value="INFO">Info</option>
+           <option value="WARNING">Warning</option>
+           <option value="ERROR">Error</option>
+        </select>
+
+    </div>
+
+    <pre id="log" style="height:500px; overflow:auto; background:#111; color:#eee; padding:10px; border-radius:4px;">{% for line in lines -%}{{ line }}
+{% endfor %}</pre>
+</div>
+
+<script>
+const logEl = document.getElementById("log");
+const toggleBtn = document.getElementById("toggle-btn");
+const clearBtn = document.getElementById("clear-btn");
+const statusEl = document.getElementById("stream-status");
+const filterEl = document.getElementById("level-filter");
+
+let currentFilter = "INFO";
+filterEl.value = "INFO"
+let paused = false;
+let buffer = [];
+
+// ---------- UI helpers ----------
+
+function updateUI() {
+    if (paused) {
+        toggleBtn.textContent = "Resume";
+        toggleBtn.classList.add("opacity-75");
+        toggleBtn.style.borderStyle = "solid";
+        statusEl.textContent = "Paused";
+    } else {
+        toggleBtn.textContent = "Pause";
+        toggleBtn.classList.remove("opacity-75");
+        toggleBtn.style.borderStyle = "solid";
+        statusEl.textContent = "Live";
+    }
+}
+
+function passesFilter(line) {
+    if (currentFilter === "ALL") return true;
+    return line.includes(currentFilter);
+}
+
+function scrollToBottom() {
+    logEl.scrollTop = logEl.scrollHeight;
+}
+
+// ---------- Log handling ----------
+
+function append(line) {
+    if (!passesFilter(line)) return;
+
+    if (paused) {
+        buffer.push(line);
+        return;
+    }
+
+    logEl.textContent += line + "\n";
+    scrollToBottom();
+}
+
+// ---------- SSE connection ----------
+
+function connect() {
+    const source = new EventSource("{{ url_for('admin.admin_log_stream') }}");
+
+    source.onmessage = function(event) {
+        if (event.data !== ": ping") {
+            append(event.data);
+        }
+    };
+
+    source.onerror = function(e) {
+        console.error("SSE connection lost — retrying...");
+        setTimeout(connect, 3000);
+    };
+}
+
+// ---------- Controls ----------
+
+toggleBtn.addEventListener("click", () => {
+    paused = !paused;
+
+    if (!paused && buffer.length) {
+        logEl.textContent += buffer.join("\n") + "\n";
+        buffer = [];
+        scrollToBottom();
+    }
+
+    updateUI();
+});
+
+clearBtn.addEventListener("click", () => {
+    logEl.textContent = "";
+});
+
+filterEl.addEventListener("change", () => {
+    currentFilter = filterEl.value;
+});
+
+// ---------- Init ----------
+
+// scroll to bottom when page loads
+window.addEventListener("load", () => {
+    const allLines = logEl.textContent.split("\n");
+    logEl.textContent = "";
+
+    allLines.forEach(line => {
+        if (passesFilter(line)) {
+            logEl.textContent += line + "\n";
+        }
+    });
+
+    scrollToBottom();
+    updateUI();
+});
+
+
+// start stream
+connect();
+</script>
+{% endblock %}
+
