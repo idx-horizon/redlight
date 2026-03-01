@@ -1,8 +1,21 @@
 # app/utils/db.py
 import sqlite3
-from flask import g
+from flask import g, has_app_context
 
 def get_db(db_path):
+    if has_app_context():
+        # normal Flask mode
+        if "db" not in g:
+            g.db = sqlite3.connect(db_path)
+            g.db.row_factory = sqlite3.Row
+        return g.db
+    else:
+        # standalone mode
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        return conn
+
+def get_db_old(db_path):
     """
     Return a SQLite connection for the given database path.
     Stores one connection per database per request in `g`.
