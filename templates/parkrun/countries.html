@@ -9,7 +9,7 @@
 
         <!-- Toggle button for series -->
         <button id="seriesToggleBtn" class="btn btn-outline-primary">
-            Showing: Standard (Saturday)
+            Showing: Normal
         </button>
     </div>
 
@@ -18,7 +18,7 @@
             <thead class="table-dark">
                 <tr>
                     <th data-base="Country">Country</th>
-                    <th id="series-column-header" data-base="Number">Number</th>
+                    <th id="series-column-header" data-base="Number"></th>
                 </tr>
             </thead>
             <tbody>
@@ -69,8 +69,8 @@ document.addEventListener("DOMContentLoaded", function() {
 
     function updateView() {
         toggleBtn.textContent = currentSeries === "standard"
-            ? "Showing: Standard (Saturday)"
-            : "Showing: Junior (Sunday)";
+            ? "Showing: Standard"
+            : "Showing: Junior";
 
         rows.forEach(row => {
             const valueCell = row.querySelector(".series-value");
