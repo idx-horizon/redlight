@@ -332,7 +332,7 @@ def events():
         query += " AND seriesid = 2"
 
     if search:
-        search_pattern = search.replace("*", "%")
+        search_pattern = search.replace("*", "%") + "%"
         query += " AND LOWER(long_name) LIKE LOWER(?)"
         params.append(search_pattern)
 
