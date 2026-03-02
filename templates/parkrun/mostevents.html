@@ -1,7 +1,5 @@
 {% extends "base.html" %}
 
-{% block title %}XMost Events{% endblock %}
-
 {% block content %}
 
 <!-- Favorites quick buttons -->
@@ -30,7 +28,7 @@
 
     <div class="col-md-3 align-self-end">
         <button type="submit" class="btn btn-success">Filter</button>
-        <a href="/mostevents" class="btn btn-secondary">Reset</a>
+        <a href="{{ url_for('parkrun.mostevents') }}" class="btn btn-secondary">Reset</a>
     </div>
 </form>
 

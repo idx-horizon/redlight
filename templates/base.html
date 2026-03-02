@@ -30,14 +30,30 @@ body.sidebar-open {
 .my-icon {
   color: #00c853;
 }
+<!--.sidebar {-->
+<!--    position: fixed;-->
+<!--    top: 70px;   /* navbar height */-->
+<!--    left: 0;-->
+<!--    width: 220px;-->
+<!--    bottom: 0;-->
+<!--}-->
+
+.main-content {
+    margin-left: 220px;
+    margin-top: 70px;
+}
 
 /* Sidebar */
 .sidebar {
+  position: fixed;
+  left: 0;
+  width: 220px;
+  bottom: 0;
   background-color: #343a40;
   color: #fff;
   padding-top: 1rem;
-  top: 56px;
-  min-height: calc(100vh - 56px);
+  top: 50px;
+<!--  min-height: calc(100vh - 56px);-->
 }
 
 .sidebar::before {
@@ -171,14 +187,33 @@ footer.footer {
 <body>
 
   <!-- Mobile navbar -->
-  <nav class="navbar navbar-dark bg-dark fixed-top">
+  <nav class="navbar navbar-dark bg-dark fixed-top justify-content-between">
     <div class="container-fluid">
       <button class="btn btn-outline-light d-md-none" type="button" onclick="toggleSidebar()">
-        <i class="bi bi-list"></i> Menu
+        <i class="bi bi-list"></i>Menu
       </button>
       <span class="navbar-brand mb-0 h1">{{ WEBSITE_NAME }}</span>
+      <div class="text-white fw-semibold">
+         {{ page_title if page_title else "todo"}}
+      </div>
     </div>
   </nav>
+
+<!--<div class="top-navbar d-flex bg-dark align-items-center justify-content-between px-3">-->
+
+    <!-- left side (optional: menu toggle or app name) -->
+<!--    <div>-->
+<!--        <button class="btn btn-sm btn-outline-light" onclick="toggleSidebar()">-->
+<!--            ☰ Menu-->
+<!--        </button>-->
+<!--    </div>-->
+
+    <!-- right side page title -->
+<!--    <div class="text-white fw-semibold">-->
+<!--        {{ page_title if page_title else "" }}-->
+<!--    </div>-->
+
+<!--</div>-->
 
   <div class="container-fluid">
     <div class="row">

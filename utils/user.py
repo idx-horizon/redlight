@@ -1,6 +1,12 @@
 import json
+from  flask import current_app
 
 def get_user_settings(db, username):
+    dbs = db.execute("PRAGMA database_list;").fetchall()
+    current_app.logger.info(db, username)
+    current_app.logger.info(f"DBs: {str(dbs)}")
+
+
     row = db.execute(
         "SELECT settings FROM user WHERE username = ?",
         (username,)

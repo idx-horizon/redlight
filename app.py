@@ -253,7 +253,7 @@ def login():
 
             next_url = request.args.get("next")
             current_app.logger.info(f"LOGIN: user={current_user.username}")
-
+            session['username'] = username
             if next_url and is_safe_url(next_url):
                 return redirect(next_url)
             else:

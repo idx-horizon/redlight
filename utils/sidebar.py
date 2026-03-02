@@ -7,7 +7,7 @@ def get_sidebar_items():
     Only include items the user can actually access.
     """
     items = {
-        'admin': ['dashboard'],
+        'admin': ['dashboard','logs'],
         'personal': ['alcohol','finance','countdown'],
         'parkrun': ['dashboard','difficulty','mostevents','countries','events'],
         'tx': ['dashboard']

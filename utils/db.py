@@ -1,16 +1,22 @@
 # app/utils/db.py
 import sqlite3
-from flask import g, has_app_context
+from flask import g, has_app_context, current_app
 
 def get_db(db_path):
     if has_app_context():
-        # normal Flask mode
-        if "db" not in g:
-            g.db = sqlite3.connect(db_path)
-            g.db.row_factory = sqlite3.Row
-        return g.db
+        current_app.logger.info(f"Get DB: {db_path}")
+
+        if not hasattr(g, "db_connections"):
+            g.db_connections = {}
+
+        if db_path not in g.db_connections:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            g.db_connections[db_path] = conn
+
+        return g.db_connections[db_path]
+
     else:
-        # standalone mode
         conn = sqlite3.connect(db_path)
         conn.row_factory = sqlite3.Row
         return conn

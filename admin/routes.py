@@ -37,7 +37,7 @@ def dashboard():
     )
 
 @admin_bp.route("/logs")
-def admin_logs():
+def logs():
     # replace with your auth check
 #    if not is_admin_user():
 #        abort(403)

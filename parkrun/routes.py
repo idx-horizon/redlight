@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, current_app
+from flask import Blueprint, render_template, request, current_app, session, redirect
 from flask_login import login_required
 import pandas as pd
 import os
@@ -7,6 +7,7 @@ import sqlite3
 
 from auth import requires_permission
 from utils.db import get_db
+from utils.user import get_user_settings, update_user_settings
 
 BP="parkrun"
 parkrun_bp = Blueprint(BP, __name__, url_prefix=f"/{BP}")
@@ -16,6 +17,7 @@ parkrun_bp = Blueprint(BP, __name__, url_prefix=f"/{BP}")
 # ---------------------------------------------------
 
 PKRGEO_DB_PATH = '/home/redagent/apps/website/data/PKRGEO.DB'
+USER_DB_PATH = '/home/redagent/apps/website/users.db'
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(BASE_DIR, "data")
@@ -304,11 +306,15 @@ def events():
     user_lat = 51.5074
     user_lon = -0.1278
 
-    country = request.args.get("country") or ""
+    country = request.args.get("country") 
+    # default to UK if nothing provided
+    if not country:
+       selected_country = "United Kingdom"
+
     series = request.args.get("series") or "standard"
     search = request.args.get("search", "").strip()
     page = int(request.args.get("page", 1))
-    per_page = 50
+    per_page = 25
     offset = (page - 1) * per_page
 
     # SQLite snippet for distance
@@ -347,10 +353,25 @@ def events():
     events = db.execute(query, params).fetchall()
     total_pages = (total_rows + per_page - 1) // per_page
 
+    country_rows = db.execute("""
+        SELECT DISTINCT country_name
+        FROM vw_events_enriched
+        ORDER BY country_name
+    """).fetchall()
+
+    countries = [row["country_name"] for row in country_rows]
+    
+    countries = sorted(countries, key=lambda c: (c != "United Kingdom", c))
+
+    # Add All at the end
+    countries.append("All")
+    current_app.logger.info(countries)
+
     return render_template(
         "parkrun/events.html",
+        page_title="Events",
         events=events,
-        countries=db.execute("SELECT DISTINCT country_name FROM vw_events_enriched ORDER BY country_name").fetchall(),
+        countries=countries,
         selected_country=country,
         selected_series=series,
         search=search,
@@ -358,3 +379,40 @@ def events():
         total_pages=total_pages,
         total_events=total_rows
     )
+
+@parkrun_bp.route("/set-home-event", methods=["POST"])
+@login_required
+def set_home_event():
+    geo_db = get_db(PKRGEO_DB_PATH)
+    username = session["username"]
+    event_id = int(request.form["event_id"])
+
+    event = geo_db.execute("""
+        SELECT event_id, lat, lon, long_name
+        FROM vw_events_enriched
+        WHERE event_id = ?
+    """, (event_id,)).fetchone()
+
+    if not event:
+#        flash("Event not found", "danger")
+        return redirect(url_for("parkrun.events"))
+
+    # load settings
+    user_db=get_db(USER_DB_PATH)
+    settings = get_user_settings(user_db, username)
+
+    settings["home"] = {
+        "type": "event",
+        "event_id": event["event_id"],
+        "lat": event["lat"],
+        "lon": event["lon"]
+    }
+
+    update_user_settings(user_db, username, settings)
+
+    # keep session in sync
+    session["home_lat"] = event["lat"]
+    session["home_lon"] = event["lon"]
+
+#    flash(f"Home parkrun set to {event['EventLongName']}", "success")
+    return redirect(request.referrer or url_for("parkrun.events"))
