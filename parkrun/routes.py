@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, current_app, session, redirect
-from flask_login import login_required
+from flask_login import login_required, current_user
 import pandas as pd
 import os
 import math
@@ -128,7 +128,7 @@ def dashboard():
 
     return render_template(
         "parkrun/parkrun_dashboard.html",
-        page_title="Dashboard: parkrun",
+        page_title="parkrun",
         total_parkruns=total_parkruns,
         total_runners=total_runners,
         total_highlighted=total_highlighted,
@@ -198,7 +198,7 @@ def difficulty():
     # ---------------- Render template ----------------
     return render_template(
         "parkrun/difficulty.html",
-        page_title="Course Difficulty",
+        page_title="Difficulty",
         table_data=table_data,
         columns=columns,
         name=name_filter,
@@ -303,8 +303,12 @@ from utils.geo import sqlite_distance_expr
 @login_required
 def events():
     db = get_db(PKRGEO_DB_PATH)
-    user_lat = 51.5074
-    user_lon = -0.1278
+    user_db = get_db(USER_DB_PATH)
+    settings = get_user_settings(user_db, current_user.username)
+
+    home = settings.get("home",{})
+    user_lat = home.get("lat", 51.5074)
+    user_lon = home.get("lon",-0.1278)
 
     country = request.args.get("country") 
     # default to UK if nothing provided
@@ -377,14 +381,15 @@ def events():
         search=search,
         page=page,
         total_pages=total_pages,
-        total_events=total_rows
+        total_events=total_rows,
+        settings_home=home
     )
 
 @parkrun_bp.route("/set-home-event", methods=["POST"])
 @login_required
 def set_home_event():
     geo_db = get_db(PKRGEO_DB_PATH)
-    username = session["username"]
+    username = current_user.username
     event_id = int(request.form["event_id"])
 
     event = geo_db.execute("""
@@ -402,7 +407,6 @@ def set_home_event():
     settings = get_user_settings(user_db, username)
 
     settings["home"] = {
-        "type": "event",
         "event_id": event["event_id"],
         "lat": event["lat"],
         "lon": event["lon"]
@@ -416,3 +420,13 @@ def set_home_event():
 
 #    flash(f"Home parkrun set to {event['EventLongName']}", "success")
     return redirect(request.referrer or url_for("parkrun.events"))
+
+from flask import render_template_string
+import folium
+
+@parkrun_bp.route("/map")
+def map_view():
+    m = folium.Map(location=[51.5, -0.12], zoom_start=10)
+    folium.Marker([51.5, -0.12], popup="London").add_to(m)
+
+    return m._repr_html_()

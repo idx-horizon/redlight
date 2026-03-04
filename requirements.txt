@@ -11,3 +11,4 @@ gevent
 google-api-python-client
 google-auth
 matplotlib
+folium

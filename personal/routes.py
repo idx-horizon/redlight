@@ -90,7 +90,7 @@ def alcohol():
     # ---- Step 5: render template ----
     return render_template(
         "personal/alcohol_dashboard.html",
-        page_title="Dashboard: Alcohol",
+        page_title="Alcohol",
         labels=labels,
         values=values,
         total=total,
@@ -214,7 +214,7 @@ def finance():
 
         return render_template(
             "personal/finance_dashboard.html",
-            page_title="Dashboard: Finance",
+            page_title="Finance",
             data=data
         )
 

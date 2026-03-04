@@ -9,13 +9,13 @@
             Showing: Normal
         </button>
     </div>
-
+    <p>Total countries: {{ countries | length }}</p>
     <div class="table-responsive">
         <table id="countries-table" class="table table-striped table-hover align-middle">
             <thead class="table-dark">
                 <tr>
                     <th data-base="Country">Country</th>
-                    <th id="series-column-header" data-base="Number"></th>
+                    <th id="series-column-header" data-base="Number">Count</th>
                 </tr>
             </thead>
             <tbody>
@@ -30,7 +30,10 @@
                                  src="https://flagcdn.com/24x18/{{ country.iso_code|lower }}.png"
                                  alt="{{ country.country_name }}">
                         {% endif %}
-                        {{ country.country_name }}
+                        <a href="{{ url_for('parkrun.events', country=country.country_name) }}"
+                           class="country-link">
+                           {{ country.flag }} {{ country.country_name }}
+                        </a>
                     </td>
 
                     <td class="series-value"
