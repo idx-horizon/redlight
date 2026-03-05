@@ -424,9 +424,103 @@ def set_home_event():
 from flask import render_template_string
 import folium
 
-@parkrun_bp.route("/map")
-def map_view():
+@parkrun_bp.route("/xxviewmap")
+def xxviewmap():
     m = folium.Map(location=[51.5, -0.12], zoom_start=10)
     folium.Marker([51.5, -0.12], popup="London").add_to(m)
 
     return m._repr_html_()
+
+
+
+from flask import render_template
+import folium
+from folium.plugins import MarkerCluster, HeatMap, Fullscreen
+from folium import FeatureGroup, GeoJson, Choropleth, CircleMarker
+
+@parkrun_bp.route("/viewmap")
+def viewmap():
+    current_app.logger.info('** Building map')
+    # --- Center map ---
+    m = folium.Map(location=[51.5, -0.12], zoom_start=12, tiles=None)
+
+    # --- Base layers (with proper attribution where needed) ---
+    folium.TileLayer('OpenStreetMap', name='OpenStreetMap').add_to(m)
+    folium.TileLayer('CartoDB positron', name='CartoDB Positron', attr='Map tiles by Carto, © OpenStreetMap contributors').add_to(m)
+
+    # --- Fullscreen button ---
+    Fullscreen(position='topright').add_to(m)
+
+    # --- Overlay Layer 1: Marker Cluster (user events) ---
+    cluster_group = FeatureGroup(name='Event Locations')
+    cluster = MarkerCluster().add_to(cluster_group)
+
+    user_events = [{'lat': 51.5, 'lon': -0.12, 'name': 'Bromley', 'num_runs': 5},]
+    
+    # Example event data
+    for event in user_events:  # user_events = list of objects with lat, lon, name, num_runs
+        folium.Marker(
+            location=[event["lat"], event["lon"]],
+            popup=f'{event["name"]}<br>Runs: {event["num_runs"]}'
+        ).add_to(cluster)
+
+    cluster_group.add_to(m)
+
+    # --- Overlay Layer 2: CircleMarkers (optional styling per event) ---
+    circle_group = FeatureGroup(name='Event Circles')
+    for event in user_events:
+        CircleMarker(
+            location=[event["lat"], event["lon"]],
+            radius=5 + event["num_runs"]*0.5,  # size proportional to runs
+            color='blue',
+            fill=True,
+            fill_opacity=0.6,
+            popup=f'{event["name"]}<br>Runs: {event["num_runs"]}'
+        ).add_to(circle_group)
+    circle_group.add_to(m)
+
+    # --- Overlay Layer 3: HeatMap (density of events) ---
+#    heat_group = FeatureGroup(name='Event HeatMap')
+#    heat_data = [[event["lat"], event["lon"]] for event in user_events]
+#    HeatMap(heat_data, radius=25).add_to(heat_group)
+#    heat_group.add_to(m)
+
+    # --- Overlay Layer 4: GeoJSON (example countries overlay) ---
+    # Assuming you have a GeoJSON object `countries_geojson`
+    # GeoJson(countries_geojson, name='Countries').add_to(m)
+
+    # --- Overlay Layer 5: Choropleth (example counts per country) ---
+    # Assuming you have `country_counts` dict: {country_code: count}
+    # Choropleth(
+    #     geo_data=countries_geojson,
+    #     data=country_counts,
+    #     columns=['country', 'count'],
+    #     key_on='feature.properties.iso_a3',
+    #     fill_color='YlGn',
+    #     fill_opacity=0.6,
+    #     line_opacity=0.4,
+    #     legend_name='Number of Events',
+    #     name='Country Counts'
+    # ).add_to(m)
+
+    # --- Layer Control ---
+    folium.LayerControl(collapsed=False, position='topleft').add_to(m)
+
+    # --- Generate HTML for template ---
+    rep_map_html = m._repr_html_()
+#    current_app.logger.info(f"\n** REPR: {rep_map_html[:500]} - END")
+#    map_html = m.get_root().render()
+#    map_html = m.get_root().html.render()
+#    map_script = m.get_root().script.render()
+#    map_header = m.get_root().header.render()
+
+#    current_app.logger.info(f"\n** ROOT: {map_html[:500]} - END**")
+
+    return render_template("parkrun/viewmap.html", page_title="Map", map_html=rep_map_html)
+#    return render_template(
+#        "parkrun/viewmap.html",
+#        map_html=map_html,
+#        map_script=map_script,
+#        map_header=map_header
+#    )
+

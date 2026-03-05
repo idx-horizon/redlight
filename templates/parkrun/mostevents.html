@@ -52,7 +52,7 @@
 <!-- Responsive table -->
 <div class="table-responsive">
     <table class="table table-striped table-hover table-bordered align-middle">
-        <thead>
+        <thead class="table-dark">
             <tr>
                 {% for col in columns %}
                     {% set new_dir = 'asc' if sort_dir == 'desc' or sort_col != col else 'desc' %}

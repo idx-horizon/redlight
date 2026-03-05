@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block head %}
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-0">
+    <div class="map-wrapper">
+        {{ map_html | safe }}
+    </div>
+</div>
+<!--<div class="map-wrapper">-->
+<!--    {{ map_html | safe }}-->
+<!--</div>-->
+{% endblock %}
+
+{% block scripts %}
+<script>
+{{ map_script | safe }}
+</script>
+
+<script>
+function resizeMap() {
+    const navbarHeight = document.querySelector('.navbar').offsetHeight || 50;
+    const mapWrapper = document.querySelector('.map-wrapper');
+    mapWrapper.style.height = (window.innerHeight - navbarHeight) + 'px';
+}
+window.addEventListener('load', resizeMap);
+window.addEventListener('resize', resizeMap);
+</script>
+
+{% endblock %}
