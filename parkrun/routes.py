@@ -437,12 +437,13 @@ from flask import render_template
 import folium
 from folium.plugins import MarkerCluster, HeatMap, Fullscreen
 from folium import FeatureGroup, GeoJson, Choropleth, CircleMarker
+from folium.features import DivIcon
 
 @parkrun_bp.route("/viewmap")
 def viewmap():
     current_app.logger.info('** Building map')
     # --- Center map ---
-    m = folium.Map(location=[51.5, -0.12], zoom_start=12, tiles=None)
+    m = folium.Map(location=[51.386539,0.022874], zoom_start=12, tiles=None)
 
     # --- Base layers (with proper attribution where needed) ---
     folium.TileLayer('OpenStreetMap', name='OpenStreetMap').add_to(m)
@@ -455,14 +456,40 @@ def viewmap():
     cluster_group = FeatureGroup(name='Event Locations')
     cluster = MarkerCluster().add_to(cluster_group)
 
-    user_events = [{'lat': 51.5, 'lon': -0.12, 'name': 'Bromley', 'num_runs': 5},]
-    
+    user_events = [{'lat': 51.386539, 'lon': -0.022874, 'name': 'Bromley', 'num_runs': 170},
+                   {'lat': 51.410992, 'lon': -0.335791, 'name': 'bushy', 'num_runs': 2},
+                   {'lat': 51.442078,'lon': -0.232215, 'name': 'wimbledon', 'num_runs': 3},
+                   {'lat': 51.307648,'lon': -0.184225,'name': 'banstead', 'num_runs': 21}]
+
     # Example event data
     for event in user_events:  # user_events = list of objects with lat, lon, name, num_runs
+
         folium.Marker(
             location=[event["lat"], event["lon"]],
-            popup=f'{event["name"]}<br>Runs: {event["num_runs"]}'
-        ).add_to(cluster)
+            popup=f'{event["name"]}<br>Runs: {event["num_runs"]}',
+            icon=DivIcon(
+                html=f"""
+                <div style="
+                    background:#d9534f;
+                    color:white;
+                    border-radius:50%;
+                    width:28px;
+                    height:28px;
+                    text-align:center;
+                    line-height:28px;
+                    font-size:12px;
+                    font-weight:bold;
+                    border:2px solid white;">
+                    {event["num_runs"]}
+                </div>
+                """
+            )
+        ).add_to(m)
+
+#        folium.Marker(
+#            location=[event["lat"], event["lon"]],
+#            popup=f'{event["name"]}<br>Runs: {event["num_runs"]}'
+#        ).add_to(cluster)
 
     cluster_group.add_to(m)
 
