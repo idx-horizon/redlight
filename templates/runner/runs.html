@@ -4,9 +4,9 @@
 {% block content %}
 <div class="container-fluid mt-3">
   <h4 class="mb-3">
-    🏃 {{ runner_title }}
+    🏃 {{ runner_title }} 
     {% if runner_last_seen_age %}
-      (Last seen age: {{ runner_last_seen_age }})
+      ({{ runner_last_seen_age }})
     {% endif %}
   </h4>
 

@@ -94,7 +94,7 @@ def runs(runner_id):
         page_title="Runs",
 
         runner_id=runner_id,
-        runner_title=runner_title,
+        runner_title=runner_title.split()[0],
         runner_last_seen_age=runner_last_seen_age,
 
         allowed_runners=allowed_runners,
