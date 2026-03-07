@@ -98,7 +98,7 @@
 
     <!-- Right: sorting buttons -->
     <div class="btn-group btn-group-sm">
-      {% set cols = {"date":"Run Date", "event":"Event", "time":"Time", "age":"AgeGrade"} %}
+      {% set cols = {"date":"Date", "event":"Event", "time":"Time", "age":"AgeGrade"} %}
       {% for key, label in cols.items() %}
       <a class="btn btn-outline-secondary {% if sort_key==key %}active{% endif %}"
          href="{{ url_for('runner.runs', runner_id=runner_id, sort=key, reverse='1' if sort_key==key and not reverse else '0', event=event_filter, year=year_filter) }}">
@@ -120,7 +120,7 @@
           <th class="text-end">Time</th>
           <th class="text-end">Age Grade</th>
           <th class="text-end">Pos</th>
-          <th>class="text-end">PB</th>
+          <th class="text-end">PB</th>
         </tr>
       </thead>
       <tbody>
@@ -133,7 +133,7 @@
           <td class="text-end">{{ run["Time"] }}</td>
           <td class="text-end">{{ run["AgeGrade"] }}</td>
           <td class="text-end">{{ run["Pos"] }}</td>
-          <td>class="text-end">{{ run["PB?"] }}</td>
+          <td class="text-end">{{ run["PB?"] }}</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -141,7 +141,7 @@
   </div>
 
   <!-- Pagination -->
-  {{ render_pagination('runner.runs', page, pages) }}
+  {{ render_pagination('runner.runs', page, pages, runner_id) }}
 
 </div>
 
@@ -155,7 +155,7 @@
       </div>
       <div class="modal-body">
         <form id="runnerSelectForm">
-          <div class="mb-3">
+	          <div class="mb-3">
             <label for="runnerSelectInput" class="form-label">Select Runner</label>
             <select class="form-select" id="runnerSelectInput">
               {% for r in allowed_runners %}
