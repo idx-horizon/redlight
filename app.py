@@ -1,4 +1,5 @@
 import os, sys
+import json
 from flask import Flask, session, render_template, redirect, url_for, flash, request, current_app, got_request_exception
 from dotenv import load_dotenv
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin
@@ -18,10 +19,6 @@ from utils.sidebar import get_sidebar_items
 # ---------------------------------------------------
 load_dotenv()
 
-# Path to SQLite users DB
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-xxUSERS_DB = os.path.join(BASE_DIR, "users.db")
-
 
 # ---------------------------------------------------
 # Flask app
@@ -31,7 +28,7 @@ app = Flask(__name__)
 app.jinja_env.globals['get_sidebar_items'] = get_sidebar_items
 
 # ---- logging setup ----
-LOGFILE = "/home/redagent/logs/redjff.log"
+LOGFILE = os.environ['LOGFILE']
 
 file_handler = RotatingFileHandler(
     LOGFILE,
@@ -74,7 +71,10 @@ got_request_exception.connect(log_exception, app)
 # Config
 app.config["WEBSITE_NAME"] = os.getenv("WEBSITE_NAME", "Default Site")
 app.config["WEBSITE_VERSION"] = os.getenv("WEBSITE_VERSION", "0.0.1")
-app.config["USERS_DB"] = os.path.join(BASE_DIR, "users.db")
+#app.config["USERS_DB"] = os.path.join(BASE_DIR, "users.db")
+app.config["DB_USERS"] = os.getenv("DB_USERS")
+app.config["DB_PKRGEO"] = os.getenv("DB_PKRGEO")
+app.config["LOGFILE"] = os.getenv("LOGFILE")
 app.secret_key = os.getenv("SECRET_KEY", "dev-unsafe-key")  # must set in .env
 
 @app.context_processor
@@ -99,9 +99,10 @@ login_manager.init_app(app)
 login_manager.login_view = "login"
 
 # Path to SQLite users DB
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-USERS_DB = os.path.join(BASE_DIR, "users.db")
-
+#BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+#USERS_DB = os.path.join(BASE_DIR, "users.db")
+#USERS_DB = os.environ["USERS_DB"]
+USERS_DB = app.config["DB_USERS"]
 
 # ---------------------------------------------------
 # User class for Flask-Login
@@ -125,6 +126,7 @@ class User(UserMixin):
             user.password_hash = row["password_hash"]
             user.email = row["email"]
             user.enabled = bool(row["enabled"])
+            user.settings = json.loads(row["settings"])
             return user
 
         return None
@@ -141,7 +143,7 @@ class User(UserMixin):
         conn.row_factory = sqlite3.Row
         cur = conn.cursor()
 
-        # 1️⃣ Get role permissions for all roles assigned to the user
+        # 1. Get role permissions for all roles assigned to the user
         cur.execute("""
             SELECT rp.blueprint, rp.view
             FROM role_permission rp
@@ -150,7 +152,7 @@ class User(UserMixin):
         """, (self.username,))
         perms = set((row["blueprint"], row["view"]) for row in cur.fetchall())
 
-        # 2️⃣ Apply user overrides
+        # 2A Apply user overrides
         cur.execute("""
             SELECT blueprint, view, effect
             FROM user_override
@@ -222,6 +224,7 @@ def load_user(username):
 # Home / Dashboard
 # ---------------------------------------------------
 @app.route("/")
+@app.route("/home")
 def index():
     return render_template("index.html", page_title="Home")
 
@@ -238,7 +241,7 @@ def login():
         password = request.form.get("password", "").strip()
 
         # Fetch user row from DB
-        conn = sqlite3.connect(USERS_DB)
+        conn = sqlite3.connect(app.config["DB_USERS"])
         c = conn.cursor()
         c.execute("SELECT username, password_hash FROM user WHERE username = ?", (username,))
         row = c.fetchone()
@@ -305,17 +308,19 @@ from parkrun.routes import parkrun_bp
 from tx.routes import tx_bp
 from personal.routes import personal_bp
 from admin.routes import admin_bp
+from runner.routes import runner_bp
 
 app.register_blueprint(parkrun_bp)
 app.register_blueprint(tx_bp)
 app.register_blueprint(personal_bp)
 app.register_blueprint(admin_bp)
+app.register_blueprint(runner_bp)
 
 # Ensure all DB connections are closed at the end of each request
 app.teardown_appcontext(close_dbs)
 
-if __name__ == "__main__":
-    app.run(debug=True)
+#if __name__ == "__main__":
+#    app.run(debug=True)
 
 # ---------------------------------------------------
 # Run in debug mode (optional)

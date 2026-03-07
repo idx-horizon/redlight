@@ -17,12 +17,12 @@ admin_bp = Blueprint( BP, __name__, url_prefix=f"/{BP}")
 @admin_bp.route("/", methods=['POST','GET'])
 @requires_permission()
 def dashboard():
-
-    conn = sqlite3.connect(current_app.config["USERS_DB"])
+    DB=os.environ.get("DB_USERS")
+    conn = sqlite3.connect(DB)
     c = conn.cursor()
 
     # User list
-    c.execute("SELECT username FROM user;")
+    c.execute("SELECT username, settings FROM user;")
     users = c.fetchall()
 
     stats = {
@@ -36,23 +36,25 @@ def dashboard():
         stats=stats
     )
 
+
+LOGFILE = os.environ["LOGFILE"]
+
 @admin_bp.route("/logs")
 def logs():
     # replace with your auth check
 #    if not is_admin_user():
 #        abort(403)
-
-    lines = tail_log("/home/redagent/logs/redjff.log", 300)
+    lines = tail_log(LOGFILE, 300)
     return render_template(
                   "admin/adminstream.html",
-                  page_title="Application log", 
+                  page_title="Log", 
                   lines=lines)
 
 
 @admin_bp.route("/stream")
 def admin_log_stream():
     return Response(
-        stream_with_context(stream_log("/home/redagent/logs/redjff.log")),
+        stream_with_context(stream_log(LOGFILE)),
         mimetype="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

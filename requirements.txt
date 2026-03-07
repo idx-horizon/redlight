@@ -2,6 +2,7 @@ Flask==3.1.1
 flask_login
 python-dotenv==1.0.0
 pytest
+pylint
 boto3
 pandas
 numpy

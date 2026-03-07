@@ -1,0 +1,78 @@
+{% from "macros/pagination.html" import render_pagination %}
+{% extends "base.html" %}
+
+{% block title %}
+Runner {{ runner_id }}
+{% endblock %}
+
+{% block content %}
+
+<div class="container-fluid mt-3">
+  <h4 class="mb-3">🏃 Runner Runs</h4>
+
+  <div class="text-muted small mb-2">
+    Showing {{ start }}–{{ end }} of {{ total }} runs
+  </div>
+  <div class="table-responsive">
+    <table class="table table-sm table-hover align-middle">
+      <thead>
+        <tr>
+          <th>
+            <a href="{{ url_for('runner.runs', runner_id=runner_id, sort='date', reverse='1' if sort_key=='date' and not reverse else '0') }}">
+              Run Date
+              {% if sort_key=='date' %}{{ '↓' if not reverse else '↑' }}{% endif %}
+            </a>
+          </th>
+          <th>
+            <a href="{{ url_for('runner.runs', runner_id=runner_id, sort='event', reverse='1' if sort_key=='event' and not reverse else '0') }}">
+              Event
+              {% if sort_key=='event' %}{{ '↓' if not reverse else '↑' }}{% endif %}
+            </a>
+          </th>
+          <th class="text-end">
+            <a href="{{ url_for('runner.runs', runner_id=runner_id, sort='pos', reverse='1' if sort_key=='pos' and not reverse else '0') }}">
+              Pos
+            </a>
+          </th>
+          <th class="text-end">
+            <a href="{{ url_for('runner.runs', runner_id=runner_id, sort='time', reverse='1' if sort_key=='time' and not reverse else '0') }}">
+              Time
+              {% if sort_key=='time' %}{{ '↓' if not reverse else '↑' }}{% endif %}
+            </a>
+          </th>
+          <th class="text-end">
+            <a href="{{ url_for('runner.runs', runner_id=runner_id, sort='age', reverse='1' if sort_key=='age' and not reverse else '0') }}">
+              AgeGrade
+              {% if sort_key=='age' %}{{ '↓' if not reverse else '↑' }}{% endif %}
+            </a>
+          </th>
+          <th>PB?</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for run in runs %}
+        <tr>
+          <td>{{ run["Run Date"] }}</td>
+          <td><a href="{{ run['results_link'] }}" target="_blank">{{ run["Event"] }}</a></td>
+          <td class="text-end">{{ run["Pos"] }}</td>
+          <td class="text-end">{{ run["Time"] }}</td>
+          <td class="text-end">{{ run["AgeGrade"] }}</td>
+          <td>{{ run["PB?"] }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {{ render_pagination(
+      'runner.runs',
+      page,
+      pages,
+      {
+        "runner_id": runner_id,
+        "sort": sort_key,
+        "reverse": '1' if reverse else '0'
+      }
+  ) }}
+
+{% endblock %}

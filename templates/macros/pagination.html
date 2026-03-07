@@ -1,0 +1,53 @@
+{% macro render_pagination(endpoint, page, pages, params={}) %}
+
+<nav class="d-flex justify-content-center align-items-center gap-3 mt-3">
+
+  <!-- Previous -->
+  {% if page > 1 %}
+  <a class="btn btn-outline-secondary btn-sm"
+     href="{{ url_for(endpoint, page=page-1, **params) }}">
+     Previous
+  </a>
+  {% else %}
+  <button class="btn btn-outline-secondary btn-sm" disabled>Previous</button>
+  {% endif %}
+
+  <!-- Page indicator -->
+  <span class="fw-semibold">
+    Page {{ page }} of {{ pages }}
+  </span>
+
+  <!-- Next -->
+  {% if page < pages %}
+  <a class="btn btn-outline-secondary btn-sm"
+     href="{{ url_for(endpoint, page=page+1, **params) }}">
+     Next
+  </a>
+  {% else %}
+  <button class="btn btn-outline-secondary btn-sm" disabled>Next</button>
+  {% endif %}
+
+  <!-- Go to page -->
+  <form method="get" class="d-flex align-items-center gap-2 ms-3 mb-0">
+
+    {% for k,v in params.items() if k != "page" %}
+      <input type="hidden" name="{{k}}" value="{{v}}">
+    {% endfor %}
+
+    <input type="number"
+           name="page"
+           min="1"
+           max="{{pages}}"
+           class="form-control form-control-sm"
+           style="width:80px"
+           placeholder="Page">
+
+    <button class="btn btn-outline-secondary btn-sm">
+        Go
+    </button>
+
+  </form>
+
+</nav>
+
+{% endmacro %}

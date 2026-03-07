@@ -9,6 +9,7 @@ def get_sidebar_items():
     items = {
         'admin': ['dashboard','logs'],
         'personal': ['alcohol','finance','countdown'],
+        'runner': ['runs'],
         'parkrun': ['dashboard','difficulty','mostevents','countries','events','viewmap'],
         'tx': ['dashboard']
     }

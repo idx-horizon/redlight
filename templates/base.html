@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+/<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -33,6 +33,10 @@
       flex-direction: column;
   }
 
+  .my-icon {
+      color: #00c853;
+  }
+
   /* Navbar */
   .navbar {
       position: fixed;
@@ -54,7 +58,7 @@
   }
 
   .navbar .fw-semibold {
-      color: #ff5252; /* red JFF title */
+      color: #fff; /* red JFF title */
       padding-left: 0.5rem;
   }
 
@@ -92,10 +96,10 @@
   main {
       margin-left: 220px;   /* desktop sidebar width */
       margin-top: 50px;     /* below navbar */
+      padding: 1.25rem;   /* ← adds space from sidebar and navbar */
       height: calc(100vh - 50px);
       display: flex;
       flex-direction: column;
-      padding: 0;
       flex: 1 1 auto;
   }
 
@@ -114,6 +118,24 @@
       height: 100% !important;
       display: block;
       box-sizing: border-box;
+  }
+
+  .map-page {
+      margin: -1.25rem; /* cancels main padding */
+      height: calc(100vh - 50px); 
+  }
+
+  .country-link {
+      text-decoration: none;     /* remove underline */
+      color: inherit;            /* match table text color */
+      padding: 0.15rem 0.5rem;   /* makes a small pill shape */
+      border-radius: 0.5rem;     /* rounded lozenge corners */
+      transition: background-color 0.2s ease;
+  }
+
+  .country-link:hover {
+      background-color: #e0f7fa; /* light shaded lozenge */
+      cursor: pointer;
   }
 
   /* Mobile sidebar overlay */
@@ -177,6 +199,7 @@
                aria-expanded="{{ 'true' if request.path.startswith('/' ~ bp) else 'false' }}"
                aria-controls="{{ bp }}Menu">
               {% if bp == 'admin' %}<i class="bi bi-tools"></i>{% endif %}
+              {% if bp == 'runner' %}<i class="bi bi-tools"></i>{% endif %}
               {% if bp == 'personal' %}<i class="bi bi-person-lines-fill"></i>{% endif %}
               {% if bp == 'parkrun' %}<i class="bi bi-person-walking"></i>{% endif %}
               {% if bp == 'tx' %}<i class="bi bi-graph-up"></i>{% endif %}
@@ -198,6 +221,21 @@
           </li>
         {% endif %}
       {% endfor %}
+
+      {% if current_user.is_authenticated %}
+        <li class="nav-item mt-3">
+          <a class="nav-link text-danger" href="{{ url_for('logout') }}">
+            <i class="bi bi-box-arrow-right"></i> Logout {{ current_user.username }}
+          </a>
+        </li>
+      {% else %}
+        <li class="nav-item mt-3">
+          <a class="nav-link text-white" href="{{ url_for('login') }}">
+            <i class="bi bi-box-arrow-in-right"></i> Login
+          </a>
+       </li>
+      {% endif %}
+
     </ul>
   </nav>
 
