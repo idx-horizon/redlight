@@ -117,10 +117,10 @@
         <tr>
           <th>Date</th>
           <th>Event</th>
-          <th class="text-end">Pos</th>
           <th class="text-end">Time</th>
           <th class="text-end">Age Grade</th>
-          <th>PB?</th>
+          <th class="text-end">Pos</th>
+          <th>class="text-end">PB</th>
         </tr>
       </thead>
       <tbody>
@@ -130,10 +130,10 @@
           <td>
             <a href="{{ run['results_link'] }}" target="_blank">{{ run["Event"] }}</a>
           </td>
-          <td class="text-end">{{ run["Pos"] }}</td>
           <td class="text-end">{{ run["Time"] }}</td>
           <td class="text-end">{{ run["AgeGrade"] }}</td>
-          <td>{{ run["PB?"] }}</td>
+          <td class="text-end">{{ run["Pos"] }}</td>
+          <td>class="text-end">{{ run["PB?"] }}</td>
         </tr>
         {% endfor %}
       </tbody>

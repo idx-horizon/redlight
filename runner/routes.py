@@ -87,7 +87,7 @@ def runs(runner_id):
     # -----------------------------
     page = request.args.get("page", 1, type=int)
 
-    pagination = paginate(runner_runs, page, per_page=20)
+    pagination = paginate(runner_runs, page, per_page=12)
 
     return render_template(
         "runner/runs.html",
