@@ -1,3 +1,12 @@
+import os
+
+def get_version():
+    try:
+        with open("VERSION") as f:
+            return f.read().strip()
+    except Exception:
+        return "dev"
+
 def time_to_seconds(t):
     """
     Convert MM:SS or H:MM:SS to total seconds.

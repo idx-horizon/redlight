@@ -15,7 +15,7 @@ import traceback
 from utils.security import is_safe_url
 from utils.db import close_dbs
 from utils.sidebar import get_sidebar_items
-
+from utils.helpers import get_version
 # ---------------------------------------------------
 # Load environment variables
 # ---------------------------------------------------
@@ -89,7 +89,8 @@ app.secret_key = os.getenv("SECRET_KEY", "dev-unsafe-key")  # must set in .env
 def inject_context_processor():
     return {
         "WEBSITE_NAME": app.config.get("WEBSITE_NAME", "Default"),
-        "WEBSITE_VERSION": app.config.get("WEBSITE_VERSION", "0.0.1")
+#        "WEBSITE_VERSION": app.config.get("WEBSITE_VERSION", "0.0.1")
+	"WEBSITE_VERSION": get_version()
     }
 
 @app.after_request
