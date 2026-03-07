@@ -17,9 +17,7 @@ parkrun_bp = Blueprint(BP, __name__, url_prefix=f"/{BP}")
 # ---------------------------------------------------
 
 PKRGEO_DB_PATH = os.environ['DB_PKRGEO']
-#/home/redagent/apps/website/data/PKRGEO.DB'
 USER_DB_PATH = os.environ['DB_USERS']
-#/home/redagent/apps/website/users.db'
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(BASE_DIR, "data")
@@ -305,8 +303,7 @@ from utils.geo import sqlite_distance_expr
 @login_required
 def events():
     db = get_db(PKRGEO_DB_PATH)
-    user_db = get_db(USER_DB_PATH)
-    settings = get_user_settings(user_db, current_user.username)
+    settings = get_user_settings(current_user.username)
 
     home = settings.get("home",{})
     user_lat = home.get("lat", 51.5074)
@@ -405,7 +402,7 @@ def set_home_event():
 
     # load settings
     user_db=get_db(USER_DB_PATH)
-    settings = get_user_settings(user_db, username)
+    settings = get_user_settings(username)
 
     settings["home"] = {
         "event_id": event["event_id"],
@@ -413,7 +410,7 @@ def set_home_event():
         "lon": event["lon"]
     }
 
-    update_user_settings(user_db, username, settings)
+    update_user_settings(username, settings)
 
     # keep session in sync
     session["home_lat"] = event["lat"]
@@ -424,14 +421,6 @@ def set_home_event():
 
 from flask import render_template_string
 import folium
-
-@parkrun_bp.route("/xxviewmap")
-def xxviewmap():
-    m = folium.Map(location=[51.5, -0.12], zoom_start=10)
-    folium.Marker([51.5, -0.12], popup="London").add_to(m)
-
-    return m._repr_html_()
-
 
 
 from flask import render_template

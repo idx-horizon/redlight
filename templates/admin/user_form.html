@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>User Admin</h2>
+<form method="POST" id="user-form">
+    {{ form.hidden_tag() }}
+
+    <div class="mb-3">
+        {{ form.username.label }}<br>
+        {{ form.username(class="form-control") }}
+    </div>
+
+    <div class="mb-3">
+        {{ form.password.label }}<br>
+        {{ form.password(class="form-control") }}
+    </div>
+
+    <div class="mb-3">
+        {{ form.email.label }}<br>
+        {{ form.email(class="form-control") }}
+    </div>
+
+    <div class="form-check mb-3">
+        {{ form.enabled(class="form-check-input") }}
+        {{ form.enabled.label(class="form-check-label") }}
+    </div>
+
+    <div class="mb-3">
+        {{ form.settings.label }}
+        <div id="json-editor" style="height: 300px; width: 100%;">{{ form.settings.data or '{}' }}</div>
+        <input type="hidden" name="settings" id="settings">
+        <small id="json-error" style="color: red; display: none;">Invalid JSON!</small>
+    </div>
+
+    {{ form.submit(class="btn btn-primary") }}
+</form>
+
+<!-- Ace Editor -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.11.2/ace.js"></script>
+<script>
+  var editor = ace.edit("json-editor");
+  editor.session.setMode("ace/mode/json");
+  editor.setTheme("ace/theme/github");
+  editor.session.setUseWrapMode(true);
+  editor.setOptions({ fontSize: "14px", showPrintMargin: false });
+
+  var form = document.getElementById("user-form");
+  var settingsInput = document.getElementById("settings");
+  var errorMsg = document.getElementById("json-error");
+
+  // Real-time validation
+  editor.session.on('change', function() {
+      try {
+          JSON.parse(editor.getValue());
+          errorMsg.style.display = 'none';
+      } catch (e) {
+          errorMsg.style.display = 'inline';
+      }
+  });
+
+  // Before submitting, check JSON
+  form.addEventListener("submit", function(e) {
+      try {
+          settingsInput.value = editor.getValue();
+          JSON.parse(settingsInput.value);
+      } catch (e) {
+          e.preventDefault(); // stop submission
+          alert("Please fix the JSON before submitting!");
+          editor.focus();
+      }
+  });
+</script>
+{% endblock %}

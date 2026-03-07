@@ -1,59 +1,135 @@
-{% from "macros/pagination.html" import render_pagination %}
 {% extends "base.html" %}
-
-{% block title %}
-Runner {{ runner_id }}
-{% endblock %}
+{% from "macros/pagination.html" import render_pagination %}
 
 {% block content %}
-
 <div class="container-fluid mt-3">
-  <h4 class="mb-3">🏃 Runner Runs</h4>
+  <h4 class="mb-3">
+    🏃 {{ runner_title }}
+    {% if runner_last_seen_age %}
+      (Last seen age: {{ runner_last_seen_age }})
+    {% endif %}
+  </h4>
 
-  <div class="text-muted small mb-2">
-    Showing {{ start }}–{{ end }} of {{ total }} runs
+  <!-- Select Runner button -->
+  <button type="button" class="btn btn-primary btn-sm mb-2" data-bs-toggle="modal" data-bs-target="#runnerModal">
+    Select Runner
+  </button>
+
+  <!-- Compact toolbar: result count + filters + sorting -->
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+
+    <!-- Left: result count -->
+    <div class="text-muted small me-2">
+      Showing {{ start }}–{{ end }} of {{ total }} run{{ '' if total == 1 else 's' }}
+    </div>
+
+    <!-- Middle: filters -->
+    <div class="d-flex gap-1 flex-wrap">
+
+      <!-- Event filter -->
+      <div class="dropdown">
+        <button class="btn btn-outline-secondary btn-sm dropdown-toggle d-flex align-items-center"
+                type="button"
+                data-bs-toggle="dropdown">
+          {% if event_filter %}
+            <span class="badge bg-info text-dark me-1">{{ event_filter }}</span>
+            Event
+            <a href="{{ url_for('runner.runs', runner_id=runner_id, sort=sort_key, reverse='1' if reverse else '0', year=year_filter) }}"
+               class="text-decoration-none text-dark ms-1">&times;</a>
+          {% else %}
+            Filter by event
+          {% endif %}
+        </button>
+
+        <ul class="dropdown-menu" style="max-height:300px; overflow-y:auto;">
+          <li>
+            <a class="dropdown-item" href="{{ url_for('runner.runs', runner_id=runner_id, sort=sort_key, reverse='1' if reverse else '0', year=year_filter) }}">
+              All events
+            </a>
+          </li>
+          {% if events %}
+          <li><hr class="dropdown-divider"></li>
+          {% endif %}
+          {% for event in events %}
+          <li>
+            <a class="dropdown-item {% if event == event_filter %}active{% endif %}"
+               href="{{ url_for('runner.runs', runner_id=runner_id, event=event, sort=sort_key, reverse='1' if reverse else '0', year=year_filter) }}">
+              {{ event }}
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <!-- Year filter -->
+      <div class="dropdown">
+        <button class="btn btn-outline-secondary btn-sm dropdown-toggle d-flex align-items-center"
+                type="button"
+                data-bs-toggle="dropdown">
+          {% if year_filter %}
+            <span class="badge bg-warning text-dark me-1">{{ year_filter }}</span>
+            Year
+            <a href="{{ url_for('runner.runs', runner_id=runner_id, sort=sort_key, reverse='1' if reverse else '0', event=event_filter) }}"
+               class="text-decoration-none text-dark ms-1">&times;</a>
+          {% else %}
+            Filter by year
+          {% endif %}
+        </button>
+
+        <ul class="dropdown-menu" style="max-height:200px; overflow-y:auto;">
+          <li>
+            <a class="dropdown-item" href="{{ url_for('runner.runs', runner_id=runner_id, sort=sort_key, reverse='1' if reverse else '0', event=event_filter) }}">
+              All years
+            </a>
+          </li>
+          <li><hr class="dropdown-divider"></li>
+          {% for y in years %}
+          <li>
+            <a class="dropdown-item {% if y == year_filter %}active{% endif %}"
+               href="{{ url_for('runner.runs', runner_id=runner_id, year=y, sort=sort_key, reverse='1' if reverse else '0', event=event_filter) }}">
+              {{ y }}
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+
+    </div>
+
+    <!-- Right: sorting buttons -->
+    <div class="btn-group btn-group-sm">
+      {% set cols = {"date":"Run Date", "event":"Event", "time":"Time", "age":"AgeGrade"} %}
+      {% for key, label in cols.items() %}
+      <a class="btn btn-outline-secondary {% if sort_key==key %}active{% endif %}"
+         href="{{ url_for('runner.runs', runner_id=runner_id, sort=key, reverse='1' if sort_key==key and not reverse else '0', event=event_filter, year=year_filter) }}">
+        {{ label }}
+        {% if sort_key==key %}{{ '↓' if not reverse else '↑' }}{% endif %}
+      </a>
+      {% endfor %}
+    </div>
+
   </div>
+
+  <!-- Table -->
   <div class="table-responsive">
     <table class="table table-sm table-hover align-middle">
-      <thead>
+      <thead class="table-dark">
         <tr>
-          <th>
-            <a href="{{ url_for('runner.runs', runner_id=runner_id, sort='date', reverse='1' if sort_key=='date' and not reverse else '0') }}">
-              Run Date
-              {% if sort_key=='date' %}{{ '↓' if not reverse else '↑' }}{% endif %}
-            </a>
-          </th>
-          <th>
-            <a href="{{ url_for('runner.runs', runner_id=runner_id, sort='event', reverse='1' if sort_key=='event' and not reverse else '0') }}">
-              Event
-              {% if sort_key=='event' %}{{ '↓' if not reverse else '↑' }}{% endif %}
-            </a>
-          </th>
-          <th class="text-end">
-            <a href="{{ url_for('runner.runs', runner_id=runner_id, sort='pos', reverse='1' if sort_key=='pos' and not reverse else '0') }}">
-              Pos
-            </a>
-          </th>
-          <th class="text-end">
-            <a href="{{ url_for('runner.runs', runner_id=runner_id, sort='time', reverse='1' if sort_key=='time' and not reverse else '0') }}">
-              Time
-              {% if sort_key=='time' %}{{ '↓' if not reverse else '↑' }}{% endif %}
-            </a>
-          </th>
-          <th class="text-end">
-            <a href="{{ url_for('runner.runs', runner_id=runner_id, sort='age', reverse='1' if sort_key=='age' and not reverse else '0') }}">
-              AgeGrade
-              {% if sort_key=='age' %}{{ '↓' if not reverse else '↑' }}{% endif %}
-            </a>
-          </th>
+          <th>Run Date</th>
+          <th>Event</th>
+          <th class="text-end">Pos</th>
+          <th class="text-end">Time</th>
+          <th class="text-end">AgeGrade</th>
           <th>PB?</th>
         </tr>
       </thead>
       <tbody>
         {% for run in runs %}
         <tr>
-          <td>{{ run["Run Date"] }}</td>
-          <td><a href="{{ run['results_link'] }}" target="_blank">{{ run["Event"] }}</a></td>
+          <td>{{ run.date_obj.strftime("%d-%b-%Y") }}</td>
+          <td>
+            <a href="{{ run['results_link'] }}" target="_blank">{{ run["Event"] }}</a>
+          </td>
           <td class="text-end">{{ run["Pos"] }}</td>
           <td class="text-end">{{ run["Time"] }}</td>
           <td class="text-end">{{ run["AgeGrade"] }}</td>
@@ -64,15 +140,58 @@ Runner {{ runner_id }}
     </table>
   </div>
 
-  {{ render_pagination(
-      'runner.runs',
-      page,
-      pages,
-      {
-        "runner_id": runner_id,
-        "sort": sort_key,
-        "reverse": '1' if reverse else '0'
-      }
-  ) }}
+  <!-- Pagination -->
+  {{ render_pagination('runner.runs', page, pages) }}
+
+</div>
+
+<!-- Runner selection modal (dropdown of allowed runners) -->
+<div class="modal fade" id="runnerModal" tabindex="-1" aria-labelledby="runnerModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="runnerModalLabel">Select Runner</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="runnerSelectForm">
+          <div class="mb-3">
+            <label for="runnerSelectInput" class="form-label">Select Runner</label>
+            <select class="form-select" id="runnerSelectInput">
+              {% for r in allowed_runners %}
+                <option value="{{ r.id }}" {% if r.id == runner_id %}selected{% endif %}>{{ r.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary">Show Runs</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Optional CSS for badges and clear buttons -->
+<style>
+.dropdown-toggle .badge {
+    font-size: 0.75rem;
+    line-height: 1;
+}
+.dropdown-toggle a {
+    font-size: 0.75rem;
+    line-height: 1;
+    text-decoration: none;
+}
+</style>
+
+<!-- JS for runner modal -->
+<script>
+document.getElementById('runnerSelectForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    const runnerId = document.getElementById('runnerSelectInput').value;
+    if(runnerId){
+        window.location.href = `/runner/${runnerId}`;
+    }
+});
+</script>
 
 {% endblock %}

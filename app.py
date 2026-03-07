@@ -3,6 +3,8 @@ import json
 from flask import Flask, session, render_template, redirect, url_for, flash, request, current_app, got_request_exception
 from dotenv import load_dotenv
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin
+from flask_sqlalchemy import SQLAlchemy
+
 from werkzeug.security import check_password_hash
 import sqlite3
 from werkzeug.exceptions import HTTPException
@@ -19,11 +21,17 @@ from utils.sidebar import get_sidebar_items
 # ---------------------------------------------------
 load_dotenv()
 
-
 # ---------------------------------------------------
 # Flask app
 # ---------------------------------------------------
 app = Flask(__name__)
+
+# Use the existing database file
+db_path = os.path.join(os.path.dirname(__file__), 'data', 'USERS.DB')
+app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{db_path}"
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(app)
 
 app.jinja_env.globals['get_sidebar_items'] = get_sidebar_items
 
