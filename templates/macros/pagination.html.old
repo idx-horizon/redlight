@@ -1,16 +1,11 @@
-{% macro render_pagination(endpoint, page, pages, params={}, route_params={}) %}
-
-{% set all_params = params.copy() %}
-{% for k, v in route_params.items() %}
-  {% set _ = all_params.update({k: v}) %}
-{% endfor %}
+{% macro render_pagination(endpoint, page, pages, params={}, runner_id=None) %}
 
 <nav class="d-flex justify-content-center align-items-center gap-3 mt-3">
 
   <!-- Previous -->
   {% if page > 1 %}
   <a class="btn btn-success btn-sm"
-     href="{{ url_for(endpoint, page=page-1, **all_params) }}">
+     href="{{ url_for(endpoint, page=page-1, runner_id=runner_id, **params) }}">
      Prev
   </a>
   {% else %}
@@ -25,7 +20,7 @@
   <!-- Next -->
   {% if page < pages %}
   <a class="btn btn-success btn-sm"
-     href="{{ url_for(endpoint, page=page+1, **all_params) }}">
+     href="{{ url_for(endpoint, page=page+1, runner_id=runner_id, **params) }}">
      Next
   </a>
   {% else %}

@@ -1,6 +1,9 @@
 {% extends "base.html" %}
 {% from "macros/pagination.html" import render_pagination %}
 
+{% set params = request.args.to_dict() %}
+{% set _ = params.pop('page', None) %}	
+
 {% block content %}
 <div class="container-fluid mt-3">
   <h4 class="mb-3">
@@ -127,9 +130,7 @@
         {% for run in runs %}
         <tr>
           <td>{{ run.date_obj.strftime("%d-%b-%Y") }}</td>
-          <td>
-            <a href="{{ run['results_link'] }}" target="_blank">{{ run["Event"] }}</a>
-          </td>
+          <td class="text-start">{{ run["Event"] }} </td>
           <td class="text-end">{{ run["Time"] }}</td>
           <td class="text-end">{{ run["AgeGrade"] }}</td>
           <td class="text-end">{{ run["Pos"] }}</td>
@@ -141,7 +142,13 @@
   </div>
 
   <!-- Pagination -->
-  {{ render_pagination('runner.runs', page, pages, runner_id) }}
+  {{ render_pagination(
+        endpoint='runner.runs',
+        page=page,
+        pages=pages,
+        params=params,
+        route_params={'runner_id': runner_id}
+  ) }}
 
 </div>
 
