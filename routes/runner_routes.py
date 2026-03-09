@@ -2,7 +2,7 @@ from math import ceil
 from flask import Blueprint, render_template, request, redirect, url_for, current_app
 from flask_login import current_user
 from datetime import datetime
-from collections import defaultdict
+from collections import defaultdict, Counter
 import json
 
 from utils.helpers import time_to_seconds, seconds_to_time
@@ -16,14 +16,15 @@ runner_bp = Blueprint(BP, __name__, url_prefix=f"/{BP}")
 @runner_bp.route("/", defaults={"runner_id": None})
 @runner_bp.route("/<int:runner_id>")
 def runs(runner_id):
+    current_app.logger.info(
+        f"Request received: path={request.path} args={request.args.to_dict()}"
+    )
+
     # --- Access control: allowed runners ---
     user_settings = get_user_settings(current_user.username)
-    current_app.logger.info(f"** Settings: {user_settings}")
-
     allowed_runners = user_settings.get("allowed_runners",
                                         [{"id": user_settings.get("runner_id"),
                                           "name": "You"}])
-    current_app.logger.info(f"** Allowed: {allowed_runners}")
 
     allowed_runner_ids = [r["id"] for r in allowed_runners]
 
@@ -33,6 +34,10 @@ def runs(runner_id):
 
     # Get all runs
     runner_runs, runner_title, runner_last_seen_age = get_runner_results(runner_id)
+
+
+    # Count occurrences of each event 
+    event_counts = Counter(r["Event"] for r in runner_runs)
 
     # Convert fields for sorting
     for r in runner_runs:
@@ -49,7 +54,7 @@ def runs(runner_id):
     event_filter = request.args.get("event")
 
     if event_filter:
-        runner_runs = [r for r in runner_runs if r["Event"] == event_filter]
+            runner_runs = [r for r in runner_runs if r["Event"] == event_filter]
 
     # -----------------------------
     # Year filter
@@ -58,11 +63,14 @@ def runs(runner_id):
     # Compute year list
     years = sorted({r["date_obj"].year for r in runner_runs}, reverse=True)
 
-    year_filter = request.args.get("year", type=int)
+    year_filter = request.args.get("year", datetime.now().year, type=int)
 
     if year_filter:
-       runner_runs = [r for r in runner_runs if r["date_obj"].year == year_filter]
-
+       current_app.logger.info(f'** Year filter:  {year_filter}')
+       if year_filter > 0:
+          runner_runs = [r for r in runner_runs if r["date_obj"].year == year_filter]
+    else:
+        current_app.logger.info('** No filter set')
 
 
     # -----------------------------
@@ -111,6 +119,7 @@ def runs(runner_id):
 
         events=events,
         event_filter=event_filter,
+        event_counts=event_counts,
 
         years=years,
         year_filter=year_filter,

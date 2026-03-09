@@ -35,10 +35,10 @@
                 type="button"
                 data-bs-toggle="dropdown">
           {% if event_filter %}
-            <span class="badge bg-info text-dark me-1">{{ event_filter }}</span>
+            <span class="badge bg-warning text-dark me-1">{{ event_filter }}</span>
             Event
             <a href="{{ url_for('runner.runs', runner_id=runner_id, sort=sort_key, reverse='1' if reverse else '0', year=year_filter) }}"
-               class="text-decoration-none text-dark ms-1">&times;</a>
+               class="text-decoration-none text-dark ms-1"></a>
           {% else %}
             Filter by event
           {% endif %}
@@ -73,7 +73,7 @@
             <span class="badge bg-warning text-dark me-1">{{ year_filter }}</span>
             Year
             <a href="{{ url_for('runner.runs', runner_id=runner_id, sort=sort_key, reverse='1' if reverse else '0', event=event_filter) }}"
-               class="text-decoration-none text-dark ms-1">&times;</a>
+               class="text-decoration-none text-dark ms-1"></a>
           {% else %}
             Filter by year
           {% endif %}
@@ -81,7 +81,8 @@
 
         <ul class="dropdown-menu" style="max-height:200px; overflow-y:auto;">
           <li>
-            <a class="dropdown-item" href="{{ url_for('runner.runs', runner_id=runner_id, sort=sort_key, reverse='1' if reverse else '0', event=event_filter) }}">
+            <a class="dropdown-item" 
+               href="{{ url_for('runner.runs', runner_id=runner_id, year=0, sort=sort_key, reverse='1' if reverse else '0', event=event_filter) }}">
               All years
             </a>
           </li>
@@ -118,7 +119,7 @@
     <table class="table table-sm table-hover align-middle">
       <thead class="table-dark">
         <tr>
-          <th>Date</th>
+          <th style="width: 110px;">Date</th>
           <th>Event</th>
           <th class="text-end">Time</th>
           <th class="text-end">Age Grade</th>
@@ -129,8 +130,16 @@
       <tbody>
         {% for run in runs %}
         <tr>
-          <td>{{ run.date_obj.strftime("%d-%b-%Y") }}</td>
-          <td class="text-start">{{ run["Event"] }} </td>
+          <td style="width: 110px;">{{ run.date_obj.strftime("%d-%b-%Y") }}</td>
+          <td class="text-start">
+             <a href="{{ url_for('runner.runs', runner_id=runner_id, year=0, event=run['Event']) }}"
+               class="mytable-link">
+              {{ run["Event"] }}
+            <span class="badge bg-secondary">
+              {{ event_counts[run["Event"]] }}
+            </span>
+            </a>
+          </td>
           <td class="text-end">{{ run["Time"] }}</td>
           <td class="text-end">{{ run["AgeGrade"] }}</td>
           <td class="text-end">{{ run["Pos"] }}</td>

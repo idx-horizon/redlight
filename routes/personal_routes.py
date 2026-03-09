@@ -52,7 +52,7 @@ def alcohol():
         if not end_date:
             end_date = today.isoformat()
         if not start_date:
-            start_date = (today - timedelta(days=29)).isoformat()
+            start_date = (today - timedelta(days=7)).isoformat()
 
     # ---- Step 3: fetch daily series for chart ----
     rows = cur.execute("""
