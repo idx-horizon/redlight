@@ -9,10 +9,10 @@ import matplotlib.pyplot as plt
 
 from auth import requires_permission
 
-tx_bp = Blueprint(
-           "tx",
+transaction_bp = Blueprint(
+           "transaction",
             __name__,
-            url_prefix="/tx"
+            url_prefix="/transaction"
 )
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -65,7 +65,7 @@ def load_data():
     return df
 
 
-@tx_bp.route("/dashboard", methods=['POST','GET'])
+@transaction_bp.route("/dashboard", methods=['POST','GET'])
 @login_required
 @requires_permission()
 def dashboard():
@@ -137,7 +137,7 @@ def dashboard():
 
     # --- 14. Render template ---
     return render_template(
-        "tx/tx_dashboard.html",
+        "transactions/dashboard.html",
         page_title="Transactions",
         chart_labels=chart_labels,
         chart_datasets=chart_datasets,

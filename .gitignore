@@ -11,6 +11,7 @@ myvenv/
 venv/
 
 # Data files (optional)
+data/
 data/*.csv
 data/*.db
 data/*.DB

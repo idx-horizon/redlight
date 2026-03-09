@@ -313,14 +313,14 @@ def handle_all_exceptions(e):
 # ---------------------------------------------------
 # Register Blueprints
 # ---------------------------------------------------
-from parkrun.routes import parkrun_bp
-from tx.routes import tx_bp
-from personal.routes import personal_bp
-from admin.routes import admin_bp
-from runner.routes import runner_bp
+from routes.parkrun_routes import parkrun_bp
+from routes.transaction_routes import transaction_bp
+from routes.personal_routes import personal_bp
+from routes.admin_routes import admin_bp
+from routes.runner_routes import runner_bp
 
 app.register_blueprint(parkrun_bp)
-app.register_blueprint(tx_bp)
+app.register_blueprint(transaction_bp)
 app.register_blueprint(personal_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(runner_bp)
