@@ -119,30 +119,32 @@
     <table class="table table-sm table-hover align-middle">
       <thead class="table-dark">
         <tr>
+          <th>Event</h>
           <th style="width: 110px;">Date</th>
-          <th>Event</th>
           <th class="text-end">Time</th>
           <th class="text-end">Age Grade</th>
           <th class="text-end">Pos</th>
+          <th class="text-end">Run No</h>
           <th class="text-end">PB</th>
         </tr>
       </thead>
       <tbody>
         {% for run in runs %}
         <tr>
-          <td style="width: 110px;">{{ run.date_obj.strftime("%d-%b-%Y") }}</td>
           <td class="text-start">
              <a href="{{ url_for('runner.runs', runner_id=runner_id, year=0, event=run['Event']) }}"
                class="mytable-link">
-              {{ run["Event"] }}
             <span class="badge bg-secondary">
               {{ event_counts[run["Event"]] }}
             </span>
+              {{ run["Event"] }}
             </a>
           </td>
+          <td style="width: 110px;">{{ run.date_obj.strftime("%d-%b-%Y") }}</td>
           <td class="text-end">{{ run["Time"] }}</td>
           <td class="text-end">{{ run["AgeGrade"] }}</td>
           <td class="text-end">{{ run["Pos"] }}</td>
+          <td class="text-end">{{ run["Run Number"] }}</td>
           <td class="text-end">{{ run["PB?"] }}</td>
         </tr>
         {% endfor %}
