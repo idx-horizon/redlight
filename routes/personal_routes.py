@@ -7,27 +7,21 @@ import math
 import json
 from datetime import datetime, date, timedelta
 import matplotlib.pyplot as plt
-import logging
 import sqlite3
 
 from helpers.googlesheets import get_metrics
-
+from utils.db import get_db
 from auth import requires_permission
 
 BP="personal"
 personal_bp = Blueprint( BP, __name__, url_prefix=f"/{BP}")
 
-DB_PATH = "data/healthdata.db"
-
-def get_db():
-    return sqlite3.connect(DB_PATH)
 
 @personal_bp.route("/alcohol")
 @login_required
 @requires_permission()
 def alcohol():
-    conn = get_db()
-    cur = conn.cursor()
+    db = get_db(os.environ.get('DB_HEALTH'))
 
     # ---- Step 1: read query params ----
     range_param = request.args.get("range")
@@ -40,12 +34,12 @@ def alcohol():
     if range_param == "7d":
         end_date = today.isoformat()
         start_date = (today - timedelta(days=6)).isoformat()
-    elif range_param == "30d":
+    elif range_param == "28d":
         end_date = today.isoformat()
-        start_date = (today - timedelta(days=29)).isoformat()
+        start_date = (today - timedelta(days=27)).isoformat()
     elif range_param == "All":
         end_date = today.isoformat()
-        earliest = cur.execute("SELECT MIN(sample_date) FROM alcohol_units").fetchone()[0]
+        earliest = db.execute("SELECT MIN(sample_date) FROM alcohol_units").fetchone()[0]
         start_date = earliest or end_date  # fallback if table empty
     else:
         # fallback to start/end dates if provided
@@ -55,7 +49,7 @@ def alcohol():
             start_date = (today - timedelta(days=7)).isoformat()
 
     # ---- Step 3: fetch daily series for chart ----
-    rows = cur.execute("""
+    rows = db.execute("""
         SELECT sample_date, sample_units
         FROM alcohol_units
         WHERE sample_date BETWEEN ? AND ?
@@ -66,26 +60,26 @@ def alcohol():
     values = [r[1] for r in rows]
 
     # ---- Step 4: calculate summary metrics for cards ----
-    total = cur.execute("""
+    total = db.execute("""
         SELECT COALESCE(SUM(sample_units), 0)
         FROM alcohol_units
         WHERE sample_date BETWEEN ? AND ?
     """, (start_date, end_date)).fetchone()[0]
 
-    avg = cur.execute("""
+    avg = db.execute("""
         SELECT ROUND(AVG(sample_units), 1)
         FROM alcohol_units
         WHERE sample_date BETWEEN ? AND ?
     """, (start_date, end_date)).fetchone()[0] or 0
 
-    dry_days = cur.execute("""
+    dry_days = db.execute("""
         SELECT COUNT(*)
         FROM alcohol_units
         WHERE sample_date BETWEEN ? AND ?
         AND sample_units = 0
     """, (start_date, end_date)).fetchone()[0]
 
-    conn.close()
+#    conn.close()
 
     # ---- Step 5: render template ----
     return render_template(
@@ -100,9 +94,6 @@ def alcohol():
         end_date=end_date
     )
 
-from flask import request, jsonify
-from datetime import datetime
-import sqlite3
 
 @personal_bp.route("/api/alcohol", methods=["POST"])
 def ingest_alcohol():
@@ -116,10 +107,9 @@ def ingest_alcohol():
     if not data:
         return jsonify({"error": "No JSON received"}), 400
 
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
+    db = get_db(os.environ.get('DB_HEALTH'))
 
-    cur.execute("""
+    db.execute("""
     CREATE TABLE IF NOT EXISTS alcohol_units (
         sample_date DATE PRIMARY KEY,
         sample_units INTEGER,
@@ -140,14 +130,13 @@ def ingest_alcohol():
             data['meta_version']
         ))
 
-    cur.executemany("""
+    db.executemany("""
         INSERT OR REPLACE INTO alcohol_units
         (sample_date, sample_units, meta_extract_dt, meta_source, meta_version)
         VALUES (?, ?, ?, ?, ?)
     """, parsed)
 
-    conn.commit()
-    conn.close()
+    db.commit()
 
     return jsonify({"status": "ok", "records": len(parsed)})
 
