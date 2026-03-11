@@ -429,10 +429,38 @@ from folium.plugins import MarkerCluster, HeatMap, Fullscreen
 from folium import FeatureGroup, GeoJson, Choropleth, CircleMarker
 from folium.features import DivIcon
 
+def  get_map_user_events():
+
+    settings = get_user_settings(current_user.username)
+    runner_id = settings.get('runner_id')
+
+    conn = sqlite3.connect(PKRGEO_DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+
+    query = """
+    SELECT
+        e.long_name,
+        e.short_name as name,
+        lat,
+        lon,
+        count(*) as num_runs
+    FROM events as e
+    LEFT JOIN runs as r
+        ON e.name = r.short_name
+    WHERE  runner_id =  ?
+    GROUP BY e.long_name
+    ORDER BY e.long_name
+    """
+    cur.execute(query, (runner_id,))
+    rows = cur.fetchall()
+    conn.close()
+    return rows
+
 @parkrun_bp.route("/viewmap")
 def viewmap():
     # --- Center map ---
-    m = folium.Map(location=[51.386539,0.022874], zoom_start=12, tiles=None)
+    m = folium.Map(location=[51.386539,0.022874], zoom_start=11, tiles=None)
 
     # --- Base layers (with proper attribution where needed) ---
     folium.TileLayer('OpenStreetMap', name='OpenStreetMap').add_to(m)
@@ -445,11 +473,11 @@ def viewmap():
     cluster_group = FeatureGroup(name='Event Locations')
     cluster = MarkerCluster().add_to(cluster_group)
 
-    user_events = [{'lat': 51.386539, 'lon': -0.022874, 'name': 'Bromley', 'num_runs': 170},
-                   {'lat': 51.410992, 'lon': -0.335791, 'name': 'bushy', 'num_runs': 2},
-                   {'lat': 51.442078,'lon': -0.232215, 'name': 'wimbledon', 'num_runs': 3},
-                   {'lat': 51.307648,'lon': -0.184225,'name': 'banstead', 'num_runs': 21}]
-
+#    user_events = [{'lat': 51.386539, 'lon': -0.022874, 'name': 'Bromley', 'num_runs': 170},
+#                   {'lat': 51.410992, 'lon': -0.335791, 'name': 'bushy', 'num_runs': 2},
+#                   {'lat': 51.442078,'lon': -0.232215, 'name': 'wimbledon', 'num_runs': 3},
+#                   {'lat': 51.307648,'lon': -0.184225,'name': 'banstead', 'num_runs': 21}]
+    user_events = get_map_user_events()
     # Example event data
     for event in user_events:
 

@@ -8,6 +8,7 @@ import json
 from utils.helpers import time_to_seconds, seconds_to_time
 from utils.pagination import paginate
 from utils.user import get_user_settings
+from utils.weather import get_weather
 
 BP="runner"
 runner_bp = Blueprint(BP, __name__, url_prefix=f"/{BP}")
@@ -35,7 +36,7 @@ def runs(runner_id):
     # Get all runs
     runner_runs, runner_title, runner_last_seen_age = get_runner_results(runner_id)
 
-
+    current_app.logger.info(runner_runs[0])
     # Count occurrences of each event 
     event_counts = Counter(r["Event"] for r in runner_runs)
 
@@ -131,6 +132,11 @@ def runs(runner_id):
 def get_runner_results(runner_id=184594):
     with open(f'data/runners/{runner_id}.json','r',encoding='utf-8') as f:
         data = json.loads(f.read())
+
+#    Add weather data for runs
+    for r in data[1]['runs']:
+        r['weather']=get_weather(r['short_name'],r['Run Date'])
+
     return data[1]['runs'], data[1]['title'], data[1]['last_seen_age']
 
 

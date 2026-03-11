@@ -137,7 +137,7 @@
             <span class="badge bg-secondary">
               {{ event_counts[run["Event"]] }}
             </span>
-              {{ run["Event"] }}
+              {{ run["Event"] }} {{run["weather"]["icon"] }}
             </a>
           </td>
           <td style="width: 110px;">{{ run.date_obj.strftime("%d-%b-%Y") }}</td>
