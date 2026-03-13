@@ -1,9 +1,217 @@
 {% extends "base.html" %}
 
+{% block title %}Parkrun Map{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.5/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.fullscreen@2.4.0/Control.FullScreen.css"/>
+<style>
+  html, body {margin:0; padding:0; height:100%;}
+  #map {width:100%; height:100vh;}
+
+<style>
+.marker-circle {
+    display:flex;
+    align-items:center;
+    justify-content:center;
+
+    width:36px;
+    height:36px;
+    min-width:36px;          /* prevents stretching */
+    min-height:36px;
+
+    color:white;
+    font-weight:600;
+    font-size:14px;
+
+    border-radius:50%;
+    border:3px solid white;
+
+    box-shadow:0 2px 6px rgba(0,0,0,0.35);
+
+    box-sizing:border-box;   /* keeps circle size correct */
+}
+
+.marker-green {
+    background:#28a745;
+}
+
+.marker-red-small {
+    width:12px;
+    height:12px;
+    border-radius:50%;
+    border:2px solid white;
+    background:#dc3545;
+
+    box-shadow:0 1px 4px rgba(0,0,0,0.35);
+}
+</style>
+
+{% endblock %}
+
 {% block content %}
-<div class="map-page">
-   <div class="map-wrapper">
-       {{ map_html | safe }}
-   </div>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">📊 Runner Map </h2>
 </div>
+
+<form method="get" class="mb-4">
+    <div class="row align-items-center">
+        <div class="col-md-4">
+            <select name="runner_id" class="form-select" onchange="this.form.submit()">
+                {% for r in allowed_runners %}
+                <option value="{{ r.id }}" {% if r.id | string == selected_runner | string %}selected{% endif %}>
+                    {{ r.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+</form>
+
+<div id="map"></div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/leaflet@1.9.5/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.fullscreen@2.4.0/Control.FullScreen.js"></script>
+
+<script>
+
+  const runsBaseUrl = "{{ url_for('runner.runs', runner_id=selected_runner) }}"; 
+
+  // Initialize map with fullscreen
+  var map = L.map('map', {fullscreenControl:true}).setView(
+      [{{ center_lat }}, {{ center_lon }}],
+      {{ zoom }}
+  );
+
+  // --- TILE LAYERS ---
+  var osm = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      maxZoom: 19
+  }).addTo(map); // default
+
+  var humanitarian = L.tileLayer("https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png", {
+      attribution: '© OpenStreetMap contributors',
+      maxZoom: 19
+  });
+
+  var carto = L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+      attribution: '© OpenStreetMap & © CARTO',
+      maxZoom: 19
+  });
+
+  var baseMaps = {
+      "OpenStreetMap": osm,
+      "Humanitarian": humanitarian,
+      "Light Map": carto
+  };
+
+  // --- MARKER LAYERS ---
+  var runLayer = L.layerGroup();
+  var notRunLayer = L.layerGroup();
+
+  // --- RUN EVENTS (green) ---
+   var run_markers = {{ run_markers | tojson }};
+
+   run_markers.forEach(function(m){
+
+       var icon = L.divIcon({
+           className: "",
+
+           html: `<div style="
+               width:36px;
+               height:36px;
+               background:#28a745;
+               color:white;
+               font-weight:bold;
+               font-size:14px;
+               display:flex;
+               align-items:center;
+               justify-content:center;
+               border-radius:50%;
+               border:3px solid white;
+               box-shadow:0 2px 6px rgba(0,0,0,0.35);
+           ">${m.num_runs}</div>`,
+
+           iconSize:[36,36],
+           iconAnchor:[18,18]
+      });
+
+      L.marker([m.lat, m.lon], {icon:icon})
+         .bindPopup(`<b>${m.name}</b><br>${m.num_runs} runs`)
+         .bindPopup(`
+            <div style="min-width:180px">
+
+            <div style="font-weight:600;font-size:16px;margin-bottom:4px">
+              ${m.name}
+            </div>
+
+            <div>🏃 Runs completed: <b>${m.num_runs}</b></div>
+
+            <a href="${runsBaseUrl}?event=${encodeURIComponent(m.name)}&year=0"
+               target="_blank"
+               style="
+                 display:inline-block;
+                 margin-top:8px;
+                 padding:4px 10px;
+                 background:#0d6efd;
+                 color:white;
+                 border-radius:4px;
+                 text-decoration:none;
+               ">
+               View results
+            </a>
+
+           </div>
+         `, {maxWidth:220})
+
+         .addTo(runLayer);
+
+  });
+
+
+  // --- NOT RUN EVENTS (red) ---
+  var not_run_markers = {{ not_run_markers | tojson }};
+  not_run_markers.forEach(function(m){
+
+      var icon = L.divIcon({
+            className: "",
+
+            html: `<div style="
+               width:18px;
+               height:18px;
+               background:#dc3545;
+               border-radius:50%;
+               border:2px solid white;
+               box-shadow:0 1px 4px rgba(0,0,0,0.35);
+            "></div>`,
+
+            iconSize:[18,18],
+            iconAnchor:[9,9]
+      });
+
+
+      L.marker([m.lat,m.lon], {icon:icon})
+        .bindPopup(`<b>${m.name}</b><br>Not run`)
+        .addTo(notRunLayer);
+  });
+
+  // Add layers to map
+  runLayer.addTo(map);
+  notRunLayer.addTo(map);
+
+  // Overlay toggle for markers
+  var overlayMaps = {
+      "Run events": runLayer,
+      "Not run": notRunLayer
+  };
+
+  // Add layer control
+  L.control.layers(baseMaps, overlayMaps).addTo(map);
+
+  // Remove Leaflet default prefix
+  map.attributionControl.setPrefix(false);
+</script>
 {% endblock %}

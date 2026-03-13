@@ -122,35 +122,6 @@ new Chart(document.getElementById("performanceChart"), {
     }
 });
 
-// PB Progression
-new Chart(document.getElementById("pbChart"), {
-    type: "line",
-    data: {
-        labels: dates,
-        datasets: [{
-            label: "PB",
-            data: pb,
-            stepped: true,
-            borderWidth: 2,
-            pointRadius: 0
-        }]
-    },
-    options: { responsive:true, plugins:{legend:{display:false}},
-        scales:{
-            y:{
-                reverse:true,
-                ticks:{
-                    callback:function(value){
-                        let m=Math.floor(value/60);
-                        let s=value%60;
-                        return m + ":" + s.toString().padStart(2,'0');
-                    }
-                }
-            }
-        }
-    }
-});
-
 // Runs per Year
 new Chart(document.getElementById("yearChart"), {
     type:"bar",

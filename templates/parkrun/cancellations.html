@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-3">
+
+    <!-- Day Filter -->
+    <form method="get" class="mb-3">
+        <div class="row g-2 align-items-center">
+            <div class="col-auto">
+                <label class="col-form-label">Show:</label>
+            </div>
+            <div class="col-auto">
+                <select name="day" class="form-select" onchange="this.form.submit()">
+                    <option value="all" {% if selected_day == "all" %}selected{% endif %}>All</option>
+                    <option value="Saturday" {% if selected_day == "Saturday" %}selected{% endif %}>Saturday</option>
+                    <option value="Sunday" {% if selected_day == "Sunday" %}selected{% endif %}>Sunday</option>
+                </select>
+            </div>
+        </div>
+    </form>
+
+    <div class="accordion" id="cancellationsAccordion">
+        {% for date, events in cancellations.items() %}
+            {% if selected_day == "all" or date.startswith(selected_day) %}
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="heading-{{ loop.index }}">
+                    <button class="accordion-button {% if not loop.first %}collapsed{% endif %}" 
+                            type="button" 
+                            data-bs-toggle="collapse" 
+                            data-bs-target="#collapse-{{ loop.index }}" 
+                            aria-expanded="{{ 'true' if loop.first else 'false' }}" 
+                            aria-controls="collapse-{{ loop.index }}">
+                        {{ date }}
+                    </button>
+                </h2>
+
+                <div id="collapse-{{ loop.index }}" 
+                     class="accordion-collapse collapse {% if loop.first %}show{% endif %}" 
+                     aria-labelledby="heading-{{ loop.index }}" 
+                     data-bs-parent="#cancellationsAccordion">
+                    <div class="accordion-body p-0">
+                        <table class="table table-sm table-striped mb-0">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Event</th>
+                                    <th>Reason</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in events %}
+                                    {% set parts = item.split(':', 1) %}
+                                    {% set event = parts[0] %}
+                                    {% set reason = parts[1] if parts|length > 1 else "" %}
+                                    <tr>
+                                        <td>{{ event }}</td>
+                                        <td>
+                                            <span class="badge bg-light text-muted border">
+                                                {{ reason.strip() }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+
+</div>
+{% endblock %}

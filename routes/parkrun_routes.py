@@ -8,6 +8,7 @@ import sqlite3
 from auth import requires_permission
 from utils.db import get_db
 from utils.user import get_user_settings, update_user_settings
+from utils.geo import get_cancellations, get_map_user_events, get_map_uk_notrun
 
 BP="parkrun"
 parkrun_bp = Blueprint(BP, __name__, url_prefix=f"/{BP}")
@@ -289,6 +290,16 @@ def get_countries_with_event_counts():
     conn.close()
     return rows
 
+@parkrun_bp.route("/cancellations")
+def cancellations():
+    selected_day = request.args.get("day", "Saturday")
+    cancellations = get_cancellations()
+    return render_template(
+                "parkrun/cancellations.html",
+                page_title="Cancellations",
+                cancellations=cancellations,
+                selected_day=selected_day)
+
 @parkrun_bp.route("/countries")
 def countries():
     countries_data = get_countries_with_event_counts()
@@ -429,106 +440,32 @@ from folium.plugins import MarkerCluster, HeatMap, Fullscreen
 from folium import FeatureGroup, GeoJson, Choropleth, CircleMarker
 from folium.features import DivIcon
 
-def  get_map_user_events():
-
-    settings = get_user_settings(current_user.username)
-    runner_id = settings.get('runner_id')
-
-    conn = sqlite3.connect(PKRGEO_DB_PATH)
-    conn.row_factory = sqlite3.Row
-    cur = conn.cursor()
-
-    query = """
-    SELECT
-        e.long_name,
-        e.short_name as name,
-        lat,
-        lon,
-        count(*) as num_runs
-    FROM events as e
-    LEFT JOIN runs as r
-        ON e.name = r.short_name
-    WHERE  runner_id =  ?
-    GROUP BY e.long_name
-    ORDER BY e.long_name
-    """
-    cur.execute(query, (runner_id,))
-    rows = cur.fetchall()
-    conn.close()
-    return rows
-
-@parkrun_bp.route("/viewmap")
+@parkrun_bp.route('/viewmap')
 def viewmap():
-    # --- Center map ---
-    m = folium.Map(location=[51.386539,0.022874], zoom_start=11, tiles=None)
+    current_app.logger.info(
+        f"Viewmap: Request received: path={request.path} args={request.args.to_dict()}"
+    )
+    settings = get_user_settings(current_user.username)
 
-    # --- Base layers (with proper attribution where needed) ---
-    folium.TileLayer('OpenStreetMap', name='OpenStreetMap').add_to(m)
-    folium.TileLayer('CartoDB positron', name='CartoDB Positron', attr='Map tiles by Carto, © OpenStreetMap contributors').add_to(m)
+    runner_id = request.args.get("runner_id", settings["runner_id"])
+    
+    home = settings.get("home",{})
+    user_lat = home.get("lat", 51.5074)
+    user_lon = home.get("lon",-0.1278)
 
-    # --- Fullscreen button ---
-    Fullscreen(position='topright').add_to(m)
+    current_app.logger.info(f"Getting map events for {runner_id}")
+    user_events = get_map_user_events(runner_id)
+    notrun = get_map_uk_notrun(runner_id)
 
-    # --- Overlay Layer 1: Marker Cluster (user events) ---
-    cluster_group = FeatureGroup(name='Event Locations')
-    cluster = MarkerCluster().add_to(cluster_group)
-
-#    user_events = [{'lat': 51.386539, 'lon': -0.022874, 'name': 'Bromley', 'num_runs': 170},
-#                   {'lat': 51.410992, 'lon': -0.335791, 'name': 'bushy', 'num_runs': 2},
-#                   {'lat': 51.442078,'lon': -0.232215, 'name': 'wimbledon', 'num_runs': 3},
-#                   {'lat': 51.307648,'lon': -0.184225,'name': 'banstead', 'num_runs': 21}]
-    user_events = get_map_user_events()
-    # Example event data
-    for event in user_events:
-
-        folium.Marker(
-            location=[event["lat"], event["lon"]],
-            popup=f'{event["name"]}<br>Runs: {event["num_runs"]}',
-            icon=DivIcon(
-                html=f"""
-                <div style="
-                    background:#d9534f;
-                    color:white;
-                    border-radius:50%;
-                    width:28px;
-                    height:28px;
-                    text-align:center;
-                    line-height:28px;
-                    font-size:12px;
-                    font-weight:bold;
-                    border:2px solid white;">
-                    {event["num_runs"]}
-                </div>
-                """
-            )
-        ).add_to(m)
-
-    cluster_group.add_to(m)
-
-    # --- Overlay Layer 2: CircleMarkers (optional styling per event) ---
-    circle_group = FeatureGroup(name='Event Circles')
-    for event in user_events:
-        CircleMarker(
-            location=[event["lat"], event["lon"]],
-            radius=5 + event["num_runs"]*0.5,  # size proportional to runs
-            color='blue',
-            fill=True,
-            fill_opacity=0.6,
-            popup=f'{event["name"]}<br>Runs: {event["num_runs"]}'
-        ).add_to(circle_group)
-#    circle_group.add_to(m)
-
-    # --- Overlay Layer 3: HeatMap (density of events) ---
-#    heat_group = FeatureGroup(name='Event HeatMap')
-#    heat_data = [[event["lat"], event["lon"]] for event in user_events]
-#    HeatMap(heat_data, radius=25).add_to(heat_group)
-#    heat_group.add_to(m)
-
-    # --- Layer Control ---
-    folium.LayerControl(collapsed=True, position='topleft').add_to(m)
-
-    # --- Generate HTML for template ---
-    rep_map_html = m._repr_html_()
-
-    return render_template("parkrun/viewmap.html", page_title="Map", map_html=rep_map_html)
+    map_params = {
+        "page_title": "Map",
+        "selected_runner": runner_id,
+        "allowed_runners": settings.get("allowed_runners",runner_id),
+        "center_lat": user_lat, #51.386539,
+        "center_lon": user_lon, #0.022874,
+        "zoom": 11,
+        "run_markers": user_events,
+        "not_run_markers": notrun,
+    }
+    return render_template("parkrun/viewmap.html", **map_params)
 

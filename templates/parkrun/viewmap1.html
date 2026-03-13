@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="map-page">
+   <div class="map-wrapper">
+       {{ map_html | safe }}
+   </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+window.addEventListener('load', function() {
+    setTimeout(function() {
+        document.querySelectorAll('.leaflet-container').forEach(function(m) {
+            if (m._leaflet_map) {
+                m._leaflet_map.invalidateSize();
+            }
+        });
+    }, 500); // delay is important on iPhone
+});
+</script>
+{% endblock %}
