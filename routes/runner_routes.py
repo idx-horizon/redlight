@@ -9,6 +9,8 @@ from utils.helpers import time_to_seconds, seconds_to_time
 from utils.pagination import paginate
 from utils.user import get_user_settings
 from utils.weather import get_weather
+from utils.sqlhelper import get_sql
+from utils.db import get_db
 
 BP="runner"
 runner_bp = Blueprint(BP, __name__, url_prefix=f"/{BP}")
@@ -222,4 +224,70 @@ def dashboard():
         runners=runners,
         selected_runner=runner_id,
         pb_flags=pb_flags
+    )
+
+@runner_bp.route("/compare")
+def compare():
+    # Get query parameters
+    runner1 = request.args.get("runner1")
+    runner2 = request.args.get("runner2")
+    page = int(request.args.get("page", 1))
+    page_size = 10
+
+    # Build list of allowed runners 
+    user_settings = get_user_settings(current_user.username)
+    allowed_runners = user_settings.get("allowed_runners",
+                                        [{"id": user_settings.get("runner_id"),
+                                          "name": "You"}])
+
+    if not runner1:
+        runner1 = allowed_runners[0]['id']
+
+    # Build runner lookup for template
+    runner_lookup = {str(r["id"]): r for r in allowed_runners}
+
+    r1 = runner_lookup.get(str(runner1))
+    r2 = runner_lookup.get(str(runner2))
+
+    # Only fetch head-to-head if both runners are selected
+    pb_compare = []
+    stats = None
+    total_rows = 0
+
+    if r1 and r2:
+        offset = (page - 1) * page_size
+        # SQL: join results for the two runners for the same events
+
+        db = get_db('data/PKRGEO.DB')
+
+        sql = get_sql('compare_pb')
+        pb_compare = db.execute(sql, (runner1, runner2, page_size, offset, runner1, runner2)).fetchall()
+
+        # Get total number of shared events for pagination
+        sql = get_sql("total_event_pb_count")
+        total_rows = db.execute(sql, (runner1, runner2)).fetchone()[0]
+
+        sql = get_sql('stats_pb_compare')
+        stats = db.execute(sql, (runner1, runner2)).fetchone()
+        stats = dict(stats)
+
+
+    total_pages = (total_rows + page_size - 1) // page_size if total_rows else 1
+
+    # Prepare query params for pagination links (page will be replaced)
+    pagination_args = {"runner1": runner1, "runner2": runner2}
+
+    return render_template(
+        "runner/compare.html",
+        page_title="Compare PBs",
+        allowed_runners=allowed_runners,
+        runner1=runner1,
+        runner2=runner2,
+        r1=r1,
+        r2=r2,
+        pb_compare=pb_compare,
+        page=page,
+        pages=total_pages,
+        pagination_args=pagination_args,
+        stats=stats
     )

@@ -452,6 +452,7 @@ def viewmap():
     home = settings.get("home",{})
     user_lat = home.get("lat", 51.5074)
     user_lon = home.get("lon",-0.1278)
+    user_home_id = home.get("event_id","")
 
     current_app.logger.info(f"Getting map events for {runner_id}")
     user_events = get_map_user_events(runner_id)

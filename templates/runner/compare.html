@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block content %}
+
+{# --- Runner selection form --- #}
+<form method="get" class="row g-2 mb-3">
+  <div class="col-md-4">
+    <select name="runner1" class="form-select form-select-sm">
+      <option value="">Select Runner 1</option>
+      {% for r in allowed_runners %}
+        <option value="{{ r.id }}" {% if r.id|string == runner1|string %}selected{% endif %}>{{ r.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-4">
+    <select name="runner2" class="form-select form-select-sm">
+      <option value="">Select Runner 2</option>
+      {% for r in allowed_runners %}
+        <option value="{{ r.id }}" {% if r.id|string == runner2|string %}selected{% endif %}>{{ r.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-2">
+    <button type="submit" class="btn-sm btn-primary w-100">Compare</button>
+  </div>
+</form>
+
+{% if stats and r1 and r2 %}
+
+<div class="row mb-3">
+
+  <div class="col-md-3">
+    <div class="card text-center">
+      <div class="card-body">
+        <h5 class="card-title">{{ r1.name }}</h5>
+        <span class="badge bg-success fs-4">{{ stats.r1_wins }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card text-center">
+      <div class="card-body">
+        <h5 class="card-title">{{ r2.name }}</h5>
+        <span class="badge bg-success fs-4">{{ stats.r2_wins }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card text-center">
+      <div class="card-body">
+        <h5 class="card-title">Ties</h5>
+        <span class="badge bg-dark fs-4">{{ stats.ties }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card text-center">
+      <div class="card-body">
+        <h5 class="card-title">Events compared</h5>
+        <span class="badge bg-secondary fs-4">{{ stats.total_events }}</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+{% endif %}
+
+
+{# --- PB Table --- #}
+{% if pb_compare %}
+<table class="table table-striped">
+<thead class="dark-table">
+<tr>
+  <th>Event</th>
+  <th class="text-end">{{ r1.name if r1 else "Runner 1" }}</th>
+  <th class="text-end">{{ r2.name if r2 else "Runner 2" }}</th>
+</tr>
+</thead>
+<tbody>
+{% for row in pb_compare %}
+<tr>
+  <td>{{ row["event"] }}</td>
+  {# Winner/loser/tie badge #}
+  {% set r1_time = row["r1_time"] %}
+  {% set r2_time = row["r2_time"] %}
+  <td class="text-end">
+    {% if r1_time and r2_time %}
+      {% if r1_time < r2_time %}
+        <span class="badge bg-success">{{ r1_time }}</span>
+      {% elif r1_time > r2_time %}
+        <span class="badge bg-danger">{{ r1_time }}</span>
+      {% else %}
+        <span class="badge bg-dark">{{ r1_time }}</span>
+      {% endif %}
+    {% else %}
+      {{ r1_time or "" }}
+    {% endif %}
+  </td>
+  <td class="text-end">
+    {% if r1_time and r2_time %}
+      {% if r2_time < r1_time %}
+        <span class="badge bg-success">{{ r2_time }}</span>
+      {% elif r2_time > r1_time %}
+        <span class="badge bg-danger">{{ r2_time }}</span>
+      {% else %}
+        <span class="badge bg-dark">{{ r2_time }}</span>
+      {% endif %}
+    {% else %}
+      {{ r2_time or "" }}
+    {% endif %}
+  </td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+{# --- Pagination --- #}
+<nav aria-label="Page navigation">
+  <ul class="pagination">
+    {% if page > 1 %}
+      <li class="page-item">
+        <a class="page-link" href="{{ url_for('runner.compare', page=page-1, **pagination_args) }}">Previous</a>
+      </li>
+    {% endif %}
+    <li class="page-item disabled"><span class="page-link">Page {{ page }} of {{ pages }}</span></li>
+    {% if page < pages %}
+      <li class="page-item">
+        <a class="page-link" href="{{ url_for('runner.compare', page=page+1, **pagination_args) }}">Next</a>
+      </li>
+    {% endif %}
+  </ul>
+</nav>
+
+{% else %}
+<p>No results to display. Select two runners to compare PBs.</p>
+{% endif %}
+
+{% endblock %}
