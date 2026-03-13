@@ -33,13 +33,13 @@ def get_map_uk_notrun(runner_id):
         e.lat,
         e.lon
       FROM events AS e
-      WHERE e.country_code = 97
-        AND e.seriesID = 1
+      WHERE e.seriesID = 1
+        AND e.country_code <> -1
         AND NOT EXISTS (
                  SELECT 1
                  FROM runs AS r
                  WHERE r.runner_id = ?
-                   AND r.short_name = e.short_name
+                   AND r.short_name = e.name
                 )
       ORDER BY e.long_name;
      """

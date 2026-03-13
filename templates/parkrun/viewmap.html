@@ -81,10 +81,18 @@
   const runsBaseUrl = "{{ url_for('runner.runs', runner_id=selected_runner) }}"; 
 
   // Initialize map with fullscreen
-  var map = L.map('map', {fullscreenControl:true}).setView(
-      [{{ center_lat }}, {{ center_lon }}],
-      {{ zoom }}
-  );
+  var map = L.map('map', {fullscreenControl:true});
+
+      var saved_lat = localStorage.getItem("map_lat");
+      var saved_lon = localStorage.getItem("map_lon");
+      var saved_zoom = localStorage.getItem("map_zoom");
+
+      if (saved_lat && saved_lon && saved_zoom) {
+         map.setView([saved_lat, saved_lon], saved_zoom);
+      } else {
+         map.setView([{{ center_lat }}, {{ center_lon }}], {{ zoom }});
+      };
+  
 
   // --- TILE LAYERS ---
   var osm = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -131,7 +139,7 @@
                align-items:center;
                justify-content:center;
                border-radius:50%;
-               border:3px solid white;
+               border:1px solid white;
                box-shadow:0 2px 6px rgba(0,0,0,0.35);
            ">${m.num_runs}</div>`,
 
@@ -139,9 +147,8 @@
            iconAnchor:[18,18]
       });
 
-      L.marker([m.lat, m.lon], {icon:icon})
-         .bindPopup(`<b>${m.name}</b><br>${m.num_runs} runs`)
-         .bindPopup(`
+      var marker = L.marker([m.lat, m.lon], {icon:icon});
+      marker.bindPopup(`
             <div style="min-width:180px">
 
             <div style="font-weight:600;font-size:16px;margin-bottom:4px">
@@ -151,7 +158,6 @@
             <div>🏃 Runs completed: <b>${m.num_runs}</b></div>
 
             <a href="${runsBaseUrl}?event=${encodeURIComponent(m.name)}&year=0"
-               target="_blank"
                style="
                  display:inline-block;
                  margin-top:8px;
@@ -165,9 +171,11 @@
             </a>
 
            </div>
-         `, {maxWidth:220})
+         `, {maxWidth:220});
 
-         .addTo(runLayer);
+     marker.addTo(runLayer);
+
+     marker.on('mouseover', function () { this.openPopup(); });
 
   });
 
@@ -193,9 +201,20 @@
       });
 
 
-      L.marker([m.lat,m.lon], {icon:icon})
-        .bindPopup(`<b>${m.name}</b><br>Not run`)
-        .addTo(notRunLayer);
+      var marker = L.marker([m.lat,m.lon], {icon:icon});
+      marker.bindPopup(`
+            <div style="min-width:180px">
+
+            <div style="font-weight:600;font-size:16px;margin-bottom:4px">
+              ${m.name}
+            </div>
+
+            <div>🏃 Event not visited</div>
+            </div>
+         `, {maxWidth:220});
+
+      marker.addTo(notRunLayer);
+      marker.on('mouseover', function() { this.openPopup(); });
   });
 
   // Add layers to map
@@ -213,5 +232,17 @@
 
   // Remove Leaflet default prefix
   map.attributionControl.setPrefix(false);
+
+  map.on('moveend zoomend', function() {
+
+      var center = map.getCenter();
+      var zoom = map.getZoom();
+
+      localStorage.setItem("map_lat", center.lat);
+      localStorage.setItem("map_lon", center.lng);
+      localStorage.setItem("map_zoom", zoom);
+
+  });
+
 </script>
 {% endblock %}
