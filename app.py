@@ -93,6 +93,51 @@ def inject_context_processor():
 	"WEBSITE_VERSION": get_version()
     }
 
+from flask import request, current_app, g
+from flask_login import current_user
+from werkzeug.middleware.proxy_fix import ProxyFix
+
+# Wrap the app with ProxyFix if behind a trusted proxy
+# x_for=1 means trust the first X-Forwarded-For entry
+# x_proto=1 if you want to trust X-Forwarded-Proto for HTTPS info
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
+
+@app.before_request
+def log_request_info():
+    """
+    Logs every request with:
+    - Real client IP (from X-Forwarded-For if set)
+    - Route and HTTP method
+    - Logged-in user ID
+    - Query parameters
+    Stores IP in g.client_ip for routes/templates
+    """
+
+    # Get the real client IP from headers if available
+    xfwd = request.headers.get("X-Forwarded-For")
+    if xfwd:
+        ip = xfwd.split(",")[0].strip()  # first IP is real client
+    else:
+        ip = request.remote_addr  # fallback
+
+    # Route and HTTP method
+    route = request.path
+    method = request.method
+
+    # Logged-in user ID if available
+    user_id = getattr(current_user, "username", None)
+
+    # Query parameters
+    query_params = dict(request.args)
+
+    # Store IP for use in routes/templates
+    g.client_ip = ip
+
+    # Log everything
+    current_app.logger.info(
+        f"IP={ip}, User={user_id}, Route={route}, Method={method}, Params={query_params}"
+    )
+
 @app.after_request
 def add_no_cache_headers(response):
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
