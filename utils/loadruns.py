@@ -13,10 +13,11 @@ def load_runner_runs(runner_id):
     Load runner JSON into the `runs` table. Skips rows that already exist.
     """
     # 1️⃣ Read runner JSON
-    with open(f"data/runners/{runner_id}.json", "r", encoding="utf-8") as f:
+    with open(f"data/runners/{runner_id}.pkr", "r", encoding="utf-8") as f:
         data = json.load(f)
     
     runs = data[1]["runs"]  # assuming your JSON format
+    who = data[1]["title"]
 
     # 2️⃣ Insert runs into DB
     insert_sql = """
@@ -54,4 +55,4 @@ def load_runner_runs(runner_id):
                 )
             )
 
-    print(f"Inserted {len(runs)} runs for runner {runner_id} (skipping existing rows).")
+    print(f"{who} - Inserted {len(runs)} runs for runner {runner_id} (skipping existing rows).")

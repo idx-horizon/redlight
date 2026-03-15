@@ -11,10 +11,16 @@ from utils.user import get_user_settings
 from utils.weather import get_weather
 from utils.sqlhelper import get_sql
 from utils.db import get_db
+from utils.qr import make_qrcode
 
 BP="runner"
 runner_bp = Blueprint(BP, __name__, url_prefix=f"/{BP}")
 
+@runner_bp.route("/qr")
+def qr():
+    runner_id = "A184594"
+    qr_data = make_qrcode(runner_id)
+    return render_template("runner/qr.html", runner_id=runner_id, qr_base64=qr_data) 
 
 @runner_bp.route("/", defaults={"runner_id": None})
 @runner_bp.route("/<int:runner_id>")
@@ -66,7 +72,7 @@ def runs(runner_id):
     # Compute year list
     years = sorted({r["date_obj"].year for r in runner_runs}, reverse=True)
 
-    year_filter = request.args.get("year", datetime.now().year, type=int)
+    year_filter = request.args.get("year", type=int)
 
     if year_filter:
        current_app.logger.info(f'** Year filter:  {year_filter}')
@@ -132,7 +138,7 @@ def runs(runner_id):
     )
 
 def get_runner_results(runner_id=184594):
-    with open(f'data/runners/{runner_id}.json','r',encoding='utf-8') as f:
+    with open(f'data/runners/{runner_id}.pkr','r',encoding='utf-8') as f:
         data = json.loads(f.read())
 
 #    Add weather data for runs

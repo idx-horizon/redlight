@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="runner-page">
+    <h1>Runner QR Code</h1>
+    <p>Runner ID: {{ runner_id }}</p>
+    <div class="qr-container">
+        <img src="data:image/png;base64,{{ qr_base64 }}" alt="QR Code" class="qr-image">
+    </div>
+</div>
+{% endblock %}
