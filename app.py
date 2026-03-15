@@ -1,9 +1,11 @@
 import os, sys
 import json
+import time
 from flask import Flask, session, render_template, redirect, url_for, flash, request, current_app, got_request_exception
 from dotenv import load_dotenv
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin
 from flask_sqlalchemy import SQLAlchemy
+from collections import defaultdict
 
 from werkzeug.security import check_password_hash
 import sqlite3
@@ -12,10 +14,13 @@ import logging
 from logging.handlers import RotatingFileHandler
 import traceback
 
+from models import db
 from utils.security import is_safe_url
 from utils.db import close_dbs
 from utils.sidebar import get_sidebar_items
 from utils.helpers import get_version
+from config import  *
+
 # ---------------------------------------------------
 # Load environment variables
 # ---------------------------------------------------
@@ -31,8 +36,9 @@ db_path = os.path.join(os.path.dirname(__file__), 'data', 'USERS.DB')
 app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{db_path}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-db = SQLAlchemy(app)
 
+#db = SQLAlchemy(app)
+db.init_app(app)  # initialize db after app is created
 app.jinja_env.globals['get_sidebar_items'] = get_sidebar_items
 
 # ---- logging setup ----
@@ -68,6 +74,48 @@ app.logger.setLevel(level)
 
 file_handler.setFormatter(formatter)
 app.logger.addHandler(file_handler)
+
+
+# Store recent suspicious requests per IP
+ip_suspicious_log = defaultdict(list)
+
+# -------------------------
+# Security middleware
+# -------------------------
+@app.before_request
+def detect_scanning():
+    ip = request.remote_addr or "unknown"
+    path = request.path.lower()
+    params = str(request.values).lower()  # GET + POST params
+
+    suspicious = False
+
+    # 1. Suspicious paths
+    if any(path.startswith(sp) for sp in SUSPICIOUS_PATHS):
+        suspicious = True
+
+    # 2. Suspicious params
+    if any(char in params for char in SUSPICIOUS_PARAM_CHARS):
+        suspicious = True
+
+    # Log suspicious requests
+    if suspicious and ip != "127.0.0.1":
+        now = time.time()
+        ip_suspicious_log[ip].append(now)
+
+        # Remove old entries outside the window
+        ip_suspicious_log[ip] = [
+            t for t in ip_suspicious_log[ip] if now - t <= AGGRESSIVE_WINDOW
+        ]
+
+        # Check if IP is aggressive
+        if len(ip_suspicious_log[ip]) > AGGRESSIVE_THRESHOLD:
+            app.logger.info(f"IP={ip} [SECURITY] Aggressive scanner detected. Blocking temporarily.")
+            abort(403)  # Block the request
+        else:
+            app.logger.info(f"IP:{ip} [SECURITY] Suspicious request detected: Path={request.path}, Params={request.values}")
+
+
 
 # log uncaught exceptions with full traceback
 def log_exception(sender, exception, **extra):
@@ -363,12 +411,14 @@ from routes.transaction_routes import transaction_bp
 from routes.personal_routes import personal_bp
 from routes.admin_routes import admin_bp
 from routes.runner_routes import runner_bp
+from routes.services_routes import services_bp
 
 app.register_blueprint(parkrun_bp)
 app.register_blueprint(transaction_bp)
 app.register_blueprint(personal_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(runner_bp)
+app.register_blueprint(services_bp)
 
 # Ensure all DB connections are closed at the end of each request
 app.teardown_appcontext(close_dbs)
