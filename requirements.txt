@@ -16,3 +16,4 @@ google-auth
 matplotlib
 folium
 qrcode[pil]
+colorama

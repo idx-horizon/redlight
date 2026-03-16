@@ -22,10 +22,11 @@ def handle_command(chat_id, text):
 
     elif text == "/lastrun":
         # example SQLite query
-        conn = sqlite3.connect("runs.db")
+        conn = sqlite3.connect("data/PKRGEO.DB")
         row = conn.execute("""
-            SELECT event, run_date, time
+            SELECT *
             FROM runs
+            where runner_id = 184594
             ORDER BY run_date DESC
             LIMIT 1
         """).fetchone()

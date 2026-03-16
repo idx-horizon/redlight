@@ -2,8 +2,8 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 import json
 #from app import db
-
-db =  SQLAlchemy()
+from extensions import db
+#db =  SQLAlchemy()
 
 class User(db.Model, UserMixin):
     __tablename__ = 'user'

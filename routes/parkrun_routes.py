@@ -442,9 +442,6 @@ from folium.features import DivIcon
 
 @parkrun_bp.route('/viewmap')
 def viewmap():
-    current_app.logger.info(
-        f"Viewmap: Request received: path={request.path} args={request.args.to_dict()}"
-    )
     settings = get_user_settings(current_user.username)
 
     runner_id = request.args.get("runner_id", settings["runner_id"])
@@ -454,7 +451,6 @@ def viewmap():
     user_lon = home.get("lon",-0.1278)
     user_home_id = home.get("event_id","")
 
-    current_app.logger.info(f"Getting map events for {runner_id}")
     user_events = get_map_user_events(runner_id)
     notrun = get_map_uk_notrun(runner_id)
 

@@ -1,7 +1,7 @@
 import os, sys
 import json
 import time
-from flask import Flask, session, render_template, redirect, url_for, flash, request, current_app, got_request_exception
+from flask import Flask, session, render_template, redirect, url_for, flash, request, current_app, got_request_exception, abort
 from dotenv import load_dotenv
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin
 from flask_sqlalchemy import SQLAlchemy
@@ -14,8 +14,8 @@ import logging
 from logging.handlers import RotatingFileHandler
 import traceback
 
-from models import db
-from utils.security import is_safe_url
+#from models import db
+from utils.security import is_safe_url, SecurityFormatter
 from utils.db import close_dbs
 from utils.sidebar import get_sidebar_items
 from utils.helpers import get_version
@@ -36,7 +36,7 @@ db_path = os.path.join(os.path.dirname(__file__), 'data', 'USERS.DB')
 app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{db_path}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-
+from extensions import db 
 #db = SQLAlchemy(app)
 db.init_app(app)  # initialize db after app is created
 app.jinja_env.globals['get_sidebar_items'] = get_sidebar_items
@@ -56,9 +56,14 @@ app.logger.handlers.clear()
 # Prevent propagation to root logger (stops duplicates)
 app.logger.propagate = False
 
-formatter = logging.Formatter(
+#formatter = logging.Formatter(
+#    "%(asctime)s | %(levelname)s | %(name)s | %(filename)s:%(lineno)d | %(message)s"
+#)
+
+formatter = SecurityFormatter(
     "%(asctime)s | %(levelname)s | %(name)s | %(filename)s:%(lineno)d | %(message)s"
 )
+
 
 log_level = os.getenv("LOGGING_LEVEL", "INFO").upper()
 level = getattr(logging, log_level, logging.INFO)
@@ -411,7 +416,7 @@ from routes.transaction_routes import transaction_bp
 from routes.personal_routes import personal_bp
 from routes.admin_routes import admin_bp
 from routes.runner_routes import runner_bp
-from routes.services_routes import services_bp
+from routes.services_routes import services_bp, start_telegram_service
 
 app.register_blueprint(parkrun_bp)
 app.register_blueprint(transaction_bp)
@@ -419,6 +424,8 @@ app.register_blueprint(personal_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(runner_bp)
 app.register_blueprint(services_bp)
+
+start_telegram_service(app)
 
 # Ensure all DB connections are closed at the end of each request
 app.teardown_appcontext(close_dbs)

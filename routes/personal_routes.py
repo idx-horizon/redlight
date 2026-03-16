@@ -102,7 +102,6 @@ def ingest_alcohol():
         return jsonify({"error": "Unauthorized"}), 401
 
     data = request.get_json()
-    current_app.logger.debug(data)
 
     if not data:
         return jsonify({"error": "No JSON received"}), 400
@@ -193,13 +192,10 @@ def finance():
         }
 
         data = get_metrics(
-#             spreadsheet_id='133lOhBaTYkus5_tQ79QDkBShbCaFYwjTuGWeXMcfxcU',
              spreadsheet_id=os.environ['SHEET_FINANCE'],
              ranges=required_ranges,
              creds_path=os.environ['GOOGLE_CREDS']
-#             creds_path='/home/redagent/apps/googlecreds.json'
         )
-        current_app.logger.info("Fetched %d rows from Google Sheet", len(data))
 
         return render_template(
             "personal/finance_dashboard.html",

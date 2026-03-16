@@ -12,7 +12,7 @@ import sqlite3
 from forms.admin_forms import UserAdminForm
 from auth import requires_permission
 from models import User
-#from app import db
+from extensions import db
 from helpers.logging import tail_log, stream_log
 
 BP="admin"

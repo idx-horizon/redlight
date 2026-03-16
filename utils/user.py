@@ -5,9 +5,6 @@ from utils.db import get_db
 
 def get_user_settings(username):
     db = get_db(os.environ.get('DB_USERS'))
-    dbs = db.execute("PRAGMA database_list;").fetchall()
-    current_app.logger.info(dbs, username)
-
 
     row = db.execute(
         "SELECT settings FROM user WHERE username = ?",

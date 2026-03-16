@@ -1,5 +1,5 @@
 from threading import Thread
-from flask import Blueprint
+from flask import Blueprint, current_app
 import requests
 import time
 import os
@@ -35,7 +35,6 @@ def poll_telegram():
 
             chat_id = message["chat"]["id"]
             text = message.get("text", "")
-
             # Only allow authorized user
             if chat_id != AUTHORIZED_CHAT:
                 continue
@@ -45,4 +44,7 @@ def poll_telegram():
         time.sleep(1)
 
 # Start polling in a background thread when blueprint is imported
-Thread(target=poll_telegram, daemon=True).start()
+def start_telegram_service(app):
+    Thread(target=poll_telegram, daemon=True, name='Service: Telegram').start()
+    app.logger.info("Service: Telegram thread running")
+

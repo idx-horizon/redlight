@@ -4,7 +4,6 @@ from flask import g, has_app_context, current_app
 
 def get_db(db_path):
     if has_app_context():
-        current_app.logger.info(f"Get DB: {db_path}")
 
         if not hasattr(g, "db_connections"):
             g.db_connections = {}

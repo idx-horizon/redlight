@@ -25,9 +25,6 @@ def qr():
 @runner_bp.route("/", defaults={"runner_id": None})
 @runner_bp.route("/<int:runner_id>")
 def runs(runner_id):
-    current_app.logger.info(
-        f"Request received: path={request.path} args={request.args.to_dict()}"
-    )
 
     # --- Access control: allowed runners ---
     user_settings = get_user_settings(current_user.username)
@@ -44,7 +41,6 @@ def runs(runner_id):
     # Get all runs
     runner_runs, runner_title, runner_last_seen_age = get_runner_results(runner_id)
 
-    current_app.logger.info(runner_runs[0])
     # Count occurrences of each event 
     event_counts = Counter(r["Event"] for r in runner_runs)
 
@@ -75,11 +71,8 @@ def runs(runner_id):
     year_filter = request.args.get("year", type=int)
 
     if year_filter:
-       current_app.logger.info(f'** Year filter:  {year_filter}')
        if year_filter > 0:
           runner_runs = [r for r in runner_runs if r["date_obj"].year == year_filter]
-    else:
-        current_app.logger.info('** No filter set')
 
 
     # -----------------------------
