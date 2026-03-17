@@ -19,6 +19,7 @@ BP="admin"
 admin_bp = Blueprint( BP, __name__, url_prefix=f"/{BP}")
 
 @admin_bp.route("/", methods=['POST','GET'])
+@login_required
 @requires_permission()
 def dashboard():
     DB=os.environ.get("DB_USERS")
@@ -44,6 +45,7 @@ def dashboard():
 LOGFILE = os.environ["LOGFILE"]
 
 @admin_bp.route("/logs")
+@login_required
 def logs():
     # replace with your auth check
 #    if not is_admin_user():
@@ -56,6 +58,7 @@ def logs():
 
 
 @admin_bp.route("/stream")
+@login_required
 def admin_log_stream():
     return Response(
         stream_with_context(stream_log(LOGFILE)),
@@ -69,7 +72,7 @@ def admin_log_stream():
 
 @admin_bp.route('/user/<username>', methods=['GET', 'POST'])
 @admin_bp.route('/user', defaults={'username': None}, methods=['GET', 'POST'])
-#@login_required
+@login_required
 def user_admin(username=None):
     user = User.query.filter_by(username=username).first() if username else None
     form = UserAdminForm(obj=user)

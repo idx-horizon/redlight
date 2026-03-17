@@ -1,6 +1,6 @@
 from math import ceil
 from flask import Blueprint, render_template, request, redirect, url_for, current_app
-from flask_login import current_user
+from flask_login import current_user, login_required
 from datetime import datetime
 from collections import defaultdict, Counter
 import json
@@ -17,6 +17,7 @@ BP="runner"
 runner_bp = Blueprint(BP, __name__, url_prefix=f"/{BP}")
 
 @runner_bp.route("/qr")
+@login_required
 def qr():
     runner_id = "A184594"
     qr_data = make_qrcode(runner_id)
@@ -24,6 +25,7 @@ def qr():
 
 @runner_bp.route("/", defaults={"runner_id": None})
 @runner_bp.route("/<int:runner_id>")
+@login_required
 def runs(runner_id):
 
     # --- Access control: allowed runners ---
@@ -142,6 +144,7 @@ def get_runner_results(runner_id=184594):
 
 
 @runner_bp.route("/dashboard")
+@login_required
 def dashboard():
 
     # -----------------------------------
@@ -226,6 +229,7 @@ def dashboard():
     )
 
 @runner_bp.route("/compare")
+@login_required
 def compare():
     # Get query parameters
     runner1 = request.args.get("runner1")

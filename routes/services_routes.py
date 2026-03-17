@@ -1,4 +1,5 @@
 from threading import Thread
+import fcntl
 from flask import Blueprint, current_app
 import requests
 import time
@@ -45,6 +46,17 @@ def poll_telegram():
 
 # Start polling in a background thread when blueprint is imported
 def start_telegram_service(app):
+
+    lock_file = open("/tmp/telegram_bot.lock", "w")
+
+    try:
+        fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        # Another worker already started the thread
+        return
+
     Thread(target=poll_telegram, daemon=True, name='Service: Telegram').start()
     app.logger.info("Service: Telegram thread running")
+
+
 

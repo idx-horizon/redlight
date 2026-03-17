@@ -291,6 +291,7 @@ def get_countries_with_event_counts():
     return rows
 
 @parkrun_bp.route("/cancellations")
+@login_required
 def cancellations():
     selected_day = request.args.get("day", "Saturday")
     cancellations = get_cancellations()
@@ -301,6 +302,7 @@ def cancellations():
                 selected_day=selected_day)
 
 @parkrun_bp.route("/countries")
+@login_required
 def countries():
     countries_data = get_countries_with_event_counts()
     return render_template(
@@ -441,6 +443,7 @@ from folium import FeatureGroup, GeoJson, Choropleth, CircleMarker
 from folium.features import DivIcon
 
 @parkrun_bp.route('/viewmap')
+@login_required
 def viewmap():
     settings = get_user_settings(current_user.username)
 

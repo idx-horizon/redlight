@@ -31,13 +31,14 @@ def handle_command(chat_id, text):
             LIMIT 1
         """).fetchone()
         if row:
-            send_telegram(chat_id, f"🏃 Last run\n{row[0]}\n{row[1]}\nTime: {row[2]}")
+#            send_telegram(chat_id, f"🏃 Last run\n{row[0]}\n{row[1]}\nTime: {row[2]}")
+            send_telegram(chat_id, f"🏃‍ Last run\n{row}")
         else:
             send_telegram(chat_id, "No runs found.")
 
     elif text == "/pb":
         # latest personal best
-        conn = sqlite3.connect("runs.db")
+        conn = sqlite3.connect("data/PKRGEO.DB")
         row = conn.execute("""
             SELECT event, time
             FROM runs
