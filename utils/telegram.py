@@ -1,12 +1,13 @@
 import os
 import requests
 import sqlite3
+from  utils.sqlhelper import get_sql
 
 TOKEN = os.environ.get("TELEGRAM_TOKEN")
 
-def send_telegram(chat_id, text):
+def send_telegram(chat_id, text, parse_mode='HTML'):
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-    requests.post(url, json={"chat_id": chat_id, "text": text}, timeout=5)
+    requests.post(url, json={"chat_id": chat_id, "text": text, "parse_mode": parse_mode}, timeout=5)
 
 
 def handle_command(chat_id, text):
@@ -21,7 +22,6 @@ def handle_command(chat_id, text):
         send_telegram(chat_id, "✅ Server running")
 
     elif text == "/lastrun":
-        # example SQLite query
         conn = sqlite3.connect("data/PKRGEO.DB")
         row = conn.execute("""
             SELECT *
@@ -36,20 +36,21 @@ def handle_command(chat_id, text):
         else:
             send_telegram(chat_id, "No runs found.")
 
-    elif text == "/pb":
-        # latest personal best
+    elif text.startswith("/pb"):
+        try:
+           runner = text.split()[1]
+        except:
+           send_telegram(chat_id, "Usage: /pb name")
+           return
+
         conn = sqlite3.connect("data/PKRGEO.DB")
-        row = conn.execute("""
-            SELECT event, time
-            FROM runs
-            WHERE time IS NOT NULL
-            ORDER BY time ASC
-            LIMIT 1
-        """).fetchone()
+        row =  conn.execute(get_sql('pbs'),(runner,)).fetchone()
         if row:
-            send_telegram(chat_id, f"🏆 PB\n{row[0]}\nTime: {row[1]}")
+           send_telegram(chat_id,
+                        f"🏆 {row[1]}'s PB:{row[2]}",
+                        parse_mode='HTML')
         else:
-            send_telegram(chat_id, "No PB found.")
+           send_telegram(chat_id, f"Not found: {runner}")
 
     else:
         send_telegram(chat_id, "Unknown command. Try /start, /status, /lastrun, /pb")

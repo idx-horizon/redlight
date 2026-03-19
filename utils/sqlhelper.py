@@ -1,6 +1,33 @@
 
 
 SQL = {
+    "pbs": """
+    WITH ranked AS (
+        SELECT runner_id,
+               known_as,
+               time AS original_time,
+               CASE
+                   WHEN LENGTH(time) <= 5 THEN '0:' || time  -- normalize MM:SS to 0:MM:SS
+                   ELSE time
+               END AS sort_time,
+               ROW_NUMBER() OVER (
+                   PARTITION BY runner_id
+                   ORDER BY
+                       CASE
+                           WHEN LENGTH(time) <= 5 THEN '0:' || time
+                           ELSE time
+                       END ASC
+               ) AS rn
+        FROM vw_runner_runs
+        where known_as = ? COLLATE NOCASE
+    )
+    SELECT runner_id,
+        known_as,
+        original_time AS min_time
+    FROM ranked
+    WHERE rn = 1
+    ORDER BY runner_id;
+    """,
     "stats_pb_compare": """
       SELECT
         COUNT(*) AS total_events,

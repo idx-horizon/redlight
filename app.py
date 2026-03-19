@@ -5,6 +5,9 @@ from flask import Flask, session, render_template, redirect, url_for, flash, req
 from dotenv import load_dotenv
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin
 from flask_sqlalchemy import SQLAlchemy
+from flask_minify import Minify
+from flask_compress import Compress
+
 from collections import defaultdict
 
 from werkzeug.security import check_password_hash
@@ -30,6 +33,17 @@ load_dotenv()
 # Flask app
 # ---------------------------------------------------
 app = Flask(__name__)
+
+# -------------------------
+# Minify HTML output
+# -------------------------
+Minify(app=app, html=True, js=False, cssless=False,passive=True)
+
+# -------------------------
+# Compress responses
+# -------------------------
+Compress(app)  # will automatically Gzip HTML, JSON, CSS, JS responses
+
 
 # Use the existing database file
 db_path = os.path.join(os.path.dirname(__file__), 'data', 'USERS.DB')

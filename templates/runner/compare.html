@@ -2,26 +2,27 @@
 {% block content %}
 
 {# --- Runner selection form --- #}
-<form method="get" class="row g-2 mb-3">
-  <div class="col-md-4">
-    <select name="runner1" class="form-select form-select-sm">
-      <option value="">Select Runner 1</option>
-      {% for r in allowed_runners %}
-        <option value="{{ r.id }}" {% if r.id|string == runner1|string %}selected{% endif %}>{{ r.name }}</option>
-      {% endfor %}
-    </select>
-  </div>
-  <div class="col-md-4">
-    <select name="runner2" class="form-select form-select-sm">
-      <option value="">Select Runner 2</option>
-      {% for r in allowed_runners %}
-        <option value="{{ r.id }}" {% if r.id|string == runner2|string %}selected{% endif %}>{{ r.name }}</option>
-      {% endfor %}
-    </select>
-  </div>
-  <div class="col-md-2">
-    <button type="submit" class="btn-sm btn-primary w-100">Compare</button>
-  </div>
+<form method="get" class="d-flex align-items-center gap-2 flex-wrap mb-3">
+  
+  <!-- Runner 1 select -->
+  <select name="runner1" class="form-select" style="width: 170px;">
+    <option value="">Select Runner 1</option>
+    {% for r in allowed_runners %}
+      <option value="{{ r.id }}" {% if r.id|string == runner1|string %}selected{% endif %}>{{ r.name }}</option>
+    {% endfor %}
+  </select>
+
+  <!-- Runner 2 select -->
+  <select name="runner2" class="form-select" style="width: 170px;">
+    <option value="">Select Runner 2</option>
+    {% for r in allowed_runners %}
+      <option value="{{ r.id }}" {% if r.id|string == runner2|string %}selected{% endif %}>{{ r.name }}</option>
+    {% endfor %}
+  </select>
+
+  <!-- Compare button -->
+  <button type="submit" class="btn btn-primary h-100" style="height: 38px;">Compare</button>
+
 </form>
 
 {% if stats and r1 and r2 %}
