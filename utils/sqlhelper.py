@@ -1,6 +1,7 @@
 
 
 SQL = {
+
     "pbs": """
     WITH ranked AS (
         SELECT runner_id,
@@ -28,6 +29,7 @@ SQL = {
     WHERE rn = 1
     ORDER BY runner_id;
     """,
+
     "stats_pb_compare": """
       SELECT
         COUNT(*) AS total_events,

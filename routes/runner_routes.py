@@ -1,5 +1,5 @@
 from math import ceil
-from flask import Blueprint, render_template, request, redirect, url_for, current_app
+from flask import Blueprint, render_template, request, redirect, url_for, current_app, abort
 from flask_login import current_user, login_required
 from datetime import datetime
 from collections import defaultdict, Counter
@@ -44,24 +44,25 @@ def runs(runner_id):
     runner_runs, runner_title, runner_last_seen_age = get_runner_results(runner_id)
 
     # Count occurrences of each event 
-    event_counts = Counter(r["Event"] for r in runner_runs)
+    event_counts = Counter(r["event"] for r in runner_runs)
 
     # Convert fields for sorting
     for r in runner_runs:
-        r["date_obj"] = datetime.strptime(r["Run Date"], "%d/%m/%Y")
-        r["time_seconds"] = time_to_seconds(r["Time"])
-
+#        r["date_obj"] = datetime.strptime(r["Run Date"], "%d/%m/%Y")
+#        r["time_seconds"] = time_to_seconds(r["Time"])
+        r["date_obj"] = datetime.strptime(r["run_date"],"%Y-%m-%d")
+        r["time_seconds"] = time_to_seconds(r["time"])
     # -----------------------------
     # Event filter
     # -----------------------------
 
     # Event list for dropdown filter
-    events = sorted({r["Event"] for r in runner_runs})
+    events = sorted({r["event"] for r in runner_runs})
 
     event_filter = request.args.get("event")
 
     if event_filter:
-            runner_runs = [r for r in runner_runs if r["Event"] == event_filter]
+            runner_runs = [r for r in runner_runs if r["event"] == event_filter]
 
     # -----------------------------
     # Year filter
@@ -87,10 +88,10 @@ def runs(runner_id):
         runner_runs.sort(key=lambda x: x["time_seconds"] or 999999, reverse=reverse)
 
     elif sort_key == "event":
-        runner_runs.sort(key=lambda x: x["Event"], reverse=reverse)
+        runner_runs.sort(key=lambda x: x["event"], reverse=reverse)
 
     elif sort_key == "age":
-        runner_runs.sort(key=lambda x: float(x["AgeGrade"].strip("%")), reverse=reverse)
+        runner_runs.sort(key=lambda x: float(x["age_grade"].strip("%")), reverse=reverse)
 
     else:  # default sort by date
         runner_runs.sort(key=lambda x: x["date_obj"], reverse=not reverse)
@@ -137,10 +138,26 @@ def get_runner_results(runner_id=184594):
         data = json.loads(f.read())
 
 #    Add weather data for runs
-    for r in data[1]['runs']:
-        r['weather']=get_weather(r['short_name'],r['Run Date'])
+#    for r in data[1]['runs']:
+#        r['weather']=get_weather(r['short_name'],r['Run Date'])
 
-    return data[1]['runs'], data[1]['title'], data[1]['last_seen_age']
+    db = get_db('data/PKRGEO.DB')
+
+    sql = 'select * from vw_runs where runner_id = ?;'  #get_sql('compare_pb')
+    result = db.execute(sql, (runner_id, )).fetchall()
+
+    run_data = []
+    for row in result:
+        r = dict(row)
+#        current_app.logger.info(f"Type of  payload: {type(r['payload'])}\nr['payload']")
+        r['weather'] = json.loads(r['payload']) if r['payload']  else {}
+        run_data.append(r)
+
+#    run_data = [dict(row) for row in result]
+    current_app.logger.info(f"**first run:\n{run_data[0]}")
+    return run_data, data[1]['title'], data[1]['last_seen_age']
+
+#    return data[1]['runs'], data[1]['title'], data[1]['last_seen_age']
 
 
 @runner_bp.route("/dashboard")
@@ -166,13 +183,13 @@ def dashboard():
     # -----------------------------
     for r in runs:
         # date
-        r["date_obj"] = datetime.strptime(r["Run Date"], "%d/%m/%Y")
+        r["date_obj"] = datetime.strptime(r["run_date"], "%Y-%m-%d")
         # time in seconds
-        r["seconds"] = time_to_seconds(r["Time"])
+        r["seconds"] = time_to_seconds(r["time"])
         # age grade as float
-        r["age_grade"] = float(r["AgeGrade"].replace("%", ""))
+        r["age_grade"] = float(r["age_grade"].replace("%", ""))
         # PB flag
-        r["is_pb"] = bool(r["PB?"].strip())
+        r["is_pb"] = bool(r["pb"].strip())
 
     # sort by date
     runs.sort(key=lambda r: r["date_obj"])
@@ -183,7 +200,7 @@ def dashboard():
     total_runs = len(runs)
     pb_seconds = min(r["seconds"] for r in runs)
     avg_age_grade = sum(r["age_grade"] for r in runs) / total_runs
-    events = len(set(r["Event"] for r in runs))
+    events = len(set(r["event"] for r in runs))
 
     stats = {
         "total_runs": total_runs,
@@ -195,7 +212,7 @@ def dashboard():
     # -----------------------------
     # chart data
     # -----------------------------
-    dates = [r["Run Date"] for r in runs]
+    dates = [r["run_date"] for r in runs]
     times = [r["seconds"] for r in runs]
     pb_flags = [r["is_pb"] for r in runs]
 
@@ -217,6 +234,7 @@ def dashboard():
 
     return render_template(
         "runner/dashboard.html",
+        page_title="Dashboard",
         stats=stats,
         dates=dates,
         times=times,
@@ -293,4 +311,49 @@ def compare():
         pages=total_pages,
         pagination_args=pagination_args,
         stats=stats
+    )
+
+@runner_bp.route("/year")
+@login_required
+def year_summary():
+    conn = get_db('data/PKRGEO.DB')
+
+    # Get allowed runners (from current_user)
+#    allowed_runners = current_user.allowed_runners
+
+    # --- Access control: allowed runners ---
+    user_settings = get_user_settings(current_user.username)
+    runners = user_settings.get("allowed_runners",
+                                        [{"id": user_settings.get("runner_id"),
+                                          "name": "You"}])
+
+    runner_ids = [r["id"] for r in runners]
+
+    # Get selected runner from query string
+    runner_id = int(request.args.get("runner_id",0))
+
+    # Default to first allowed runner
+    if runner_id==0 and runners:
+        runner_id = runners[0]["id"]
+
+    current_app.logger.info(f"** RunnerID: {runner_id}")
+    # Security check
+    if runner_id not in runner_ids:
+        current_app.logger.info(f'** {type(runner_id)} - {runner_id}')
+        abort(403)
+
+    # Query the view
+    rows = conn.execute("""
+        SELECT *
+        FROM vw_runners_yearly
+        WHERE runner_id = ?
+        ORDER BY year DESC
+    """, (runner_id,)).fetchall()
+
+    return render_template(
+        "runner/year.html",
+        page_title="Year Summary",
+        rows=rows,
+        selected_runner=runner_id,
+        runners=runners
     )

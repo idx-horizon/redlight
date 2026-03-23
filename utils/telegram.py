@@ -2,6 +2,7 @@ import os
 import requests
 import sqlite3
 from  utils.sqlhelper import get_sql
+from utils.db import get_db
 
 TOKEN = os.environ.get("TELEGRAM_TOKEN")
 
@@ -13,28 +14,55 @@ def send_telegram(chat_id, text, parse_mode='HTML'):
 def handle_command(chat_id, text):
     """
     Dispatch commands sent to the bot.
-    Extend this as needed.
     """
-    if text == "/start":
-        send_telegram(chat_id, "👋 Bot ready")
-
-    elif text == "/status":
+    if text == "/status":
         send_telegram(chat_id, "✅ Server running")
 
     elif text == "/lastrun":
-        conn = sqlite3.connect("data/PKRGEO.DB")
+#        conn = sqlite3.connect("data/PKRGEO.DB")
+        conn = get_db("data/PKRGEO.DB")
         row = conn.execute("""
             SELECT *
             FROM runs
-            where runner_id = 184594
+            WHERE runner_id = 184594
             ORDER BY run_date DESC
             LIMIT 1
         """).fetchone()
         if row:
-#            send_telegram(chat_id, f"🏃 Last run\n{row[0]}\n{row[1]}\nTime: {row[2]}")
             send_telegram(chat_id, f"🏃‍ Last run\n{row}")
         else:
             send_telegram(chat_id, "No runs found.")
+
+    elif text.startswith('/allpb'):
+        try:
+           runner = text.split()[1]
+        except:
+           send_telegram(chat_id, "Usage:  /allpb name")
+
+        conn = sqlite3.connect("data/PKRGEO.DB")
+        rows = conn.execute('''
+            SELECT year, pb, slowest, avg_time 
+            FROM vw_runner_stats 
+            WHERE known_as = ? collate NOCASE 
+            ORDER BY year desc;
+           ''',(runner,)).fetchall()
+
+        best_ever = conn.execute('''
+            SELECT year, pb, min(pb_seconds) 
+            FROM vw_runner_stats 
+            WHERE known_as = ? collate nocase;
+           ''',(runner,)).fetchone()
+
+        message = f'🥇 Best year: {best_ever[0]}: {best_ever[1]}\n'
+        for r  in rows:
+           message +=  f"{r[0]}: {r[1]} -> {r[2]} Avg:{r[3]} \n" 
+
+        if rows:
+            send_telegram(chat_id,
+                          message,
+                          parse_mode='html')
+        else:
+            send_telegram(chat_id, f"Not found {runner}")
 
     elif text.startswith("/pb"):
         try:
