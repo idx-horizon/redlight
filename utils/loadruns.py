@@ -1,6 +1,7 @@
 import json
 import sqlite3
 from datetime import datetime
+from utils.weather import get_weather
 
 DB_PATH = "data/PKRGEO.DB"  # change to your SQLite file
 

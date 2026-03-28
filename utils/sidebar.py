@@ -9,9 +9,9 @@ def get_sidebar_items():
     items = {
         'admin': ['dashboard','logs'],
         'personal': ['alcohol','finance','countdown'],
-        'runner': ['runs','compare','dashboard','year_summary'],
+        'runner': ['runs','compare','dashboard','year_summary','atoz'],
         'parkrun': ['viewmap','events','cancellations', 'dashboard','difficulty','mostevents','countries'],
-        'Transactions': ['dashboard']
+        'transaction': ['dashboard']
     }
 
     # Filter based on current_user permissions

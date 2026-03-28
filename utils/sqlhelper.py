@@ -2,6 +2,38 @@
 
 SQL = {
 
+    "atoz": """
+WITH distinct_events AS (
+    SELECT DISTINCT 
+        runner_id,
+        TRIM(event) AS event,
+        SUBSTR(TRIM(event), 1, 1) AS initial
+    FROM runs
+    WHERE event IS NOT NULL
+),
+run_counts AS (
+    SELECT 
+        runner_id,
+        SUBSTR(TRIM(event), 1, 1) AS initial,
+        COUNT(*) AS total_runs
+    FROM runs
+    WHERE event IS NOT NULL
+    GROUP BY runner_id, initial
+)
+SELECT 
+    d.initial,
+    COUNT(*) AS event_count,
+    r.total_runs,
+    GROUP_CONCAT(d.event, ', ') AS events
+FROM distinct_events d
+JOIN run_counts r
+  ON d.runner_id = r.runner_id
+ AND d.initial = r.initial
+WHERE d.runner_id = ?
+GROUP BY d.initial, r.total_runs
+ORDER BY d.initial;
+    """,
+
     "pbs": """
     WITH ranked AS (
         SELECT runner_id,

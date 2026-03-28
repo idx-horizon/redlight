@@ -137,7 +137,7 @@ def dashboard():
 
     # --- 14. Render template ---
     return render_template(
-        "transactions/dashboard.html",
+        "transaction/dashboard.html",
         page_title="Transactions",
         chart_labels=chart_labels,
         chart_datasets=chart_datasets,

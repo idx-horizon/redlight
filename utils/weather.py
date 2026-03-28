@@ -41,7 +41,7 @@ weather_code_map = {
 }
 
 def get_weather(event_name, run_dt):
-    yyyy_mm_dd = datetime.strptime(run_dt, '%d/%m/%Y').strftime('%Y-%m-%d'),
+    yyyy_mm_dd = datetime.strptime(run_dt, '%d/%m/%Y').strftime('%Y-%m-%d')
 
     db = get_db(DB_PKRGEO)
     weather = db.execute("""
@@ -53,7 +53,6 @@ def get_weather(event_name, run_dt):
         return json.loads(weather['payload'])
 
     params = get_lat_lon(event_name)
-
     if params:
         params['run_dt']  = yyyy_mm_dd
         try:
@@ -64,10 +63,22 @@ def get_weather(event_name, run_dt):
         db.execute("""
             INSERT INTO weather_cache (event_name, run_dt, payload)
             VALUES (?,?,?)
-        """, (event_name, run_dt, weather))
+        """, (event_name, yyyy_mm_dd, weather))
 
         db.commit()
 
+        return weather
+    else:
+        dt = datetime.strptime(yyyy_mm_dd, "%Y-%m-%d").strftime("%d-%b-%Y 09:00")
+        weather = json.dumps( {"dt": dt,
+                               "description": "Unknown",
+                               "icon": "❓"})
+        db.execute("""
+            INSERT INTO weather_cache (event_name, run_dt, payload)
+            VALUES (?,?,?)
+        """,  (event_name, yyyy_mm_dd, weather))
+
+        db.commit()
         return weather
 
 def call_weather_api(lat, lon, run_dt, event=None, timezone="auto"):
@@ -116,16 +127,46 @@ def get_lat_lon(event_name):
     if row:
         return {'lat': row['lat'], 'lon': row['lon'] } 
     else:
-        return None
+        row = db.execute('''
+                 select lat, lon
+                 from ex_events ex
+                 join runs r on ex.name=r.event where short_name = ?
+              ''', (event_name,)).fetchone()
+        if row:
+            return {'lat': row['lat'], 'lon': row['lon'] }
+        else:
+            return None
 
-def build_event_list():
+#def build_event_list():
+#    db = get_db(DB_PKRGEO)
+#    row = db.execute('select name, lat, lon from events').fetchall()
+#    data = {'lat': r['lat'], 'lon': r['lon'] }
+
+#    return data
+
+
+def fill_missing_weather():
     db = get_db(DB_PKRGEO)
-    row = db.execute('select name, lat, lon from events').fetchall()
-    data = {'lat': r['lat'], 'lon': r['lon'] }
+    rows = db.execute('''
+         select distinct short_name, run_date
+         from vw_runs where payload is null
+         order by run_date desc''').fetchall()
 
-    return data
+    print(len(rows))
+    complete = 0
+    na = 0 
+    for r in rows:
+        print(f"{r[0]}{r[1]}")
+        dt = datetime.strptime(r[1], '%Y-%m-%d').strftime('%d/%m/%Y')
+        response = get_weather(r[0], dt)
+        if response:
+           complete +=1
+        else:
+           print(f'Unable to fill: {r[0]} for {dt}')
+           na += 1
 
-
+    print(f"** Filling missing weather:  complete: {complete} NA: {na}")
+    
 if __name__ == "__main__":
 #     === Example usage ===
 #    lon, lat = [-0.148616, 50.841557]

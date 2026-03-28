@@ -138,7 +138,9 @@ def get_runner_results(runner_id=184594):
         data = json.loads(f.read())
 
 #    Add weather data for runs
-#    for r in data[1]['runs']:
+#    for rdb = get_db('data/PKRGEO.DB')
+
+    sql = 'select * from vw_runs where runner_id = ?;'  #get_sql('compare_pb') in data[1]['runs']:
 #        r['weather']=get_weather(r['short_name'],r['Run Date'])
 
     db = get_db('data/PKRGEO.DB')
@@ -149,16 +151,44 @@ def get_runner_results(runner_id=184594):
     run_data = []
     for row in result:
         r = dict(row)
-#        current_app.logger.info(f"Type of  payload: {type(r['payload'])}\nr['payload']")
         r['weather'] = json.loads(r['payload']) if r['payload']  else {}
         run_data.append(r)
 
-#    run_data = [dict(row) for row in result]
-    current_app.logger.info(f"**first run:\n{run_data[0]}")
     return run_data, data[1]['title'], data[1]['last_seen_age']
 
-#    return data[1]['runs'], data[1]['title'], data[1]['last_seen_age']
 
+@runner_bp.route("/atoz")
+@login_required
+def atoz():
+    # --- Access control: allowed runners ---
+    user_settings = get_user_settings(current_user.username)
+    allowed_runners = user_settings.get(
+        "allowed_runners",
+        [{"id": user_settings.get("runner_id"), "name": "You"}]
+    )
+    allowed_runner_ids = [r["id"] for r in allowed_runners]
+
+    # 👇 get selected runner_id from query string first
+    runner_id = request.args.get("runner_id", type=int)
+
+    # --- Validate runner_id ---
+    if runner_id is None or runner_id not in allowed_runner_ids:
+        # redirect to default runner
+        runner_id = user_settings.get("runner_id")
+        return redirect(url_for("runner.atoz", runner_id=runner_id))
+
+    db = get_db('data/PKRGEO.DB')
+
+    sql = get_sql('atoz')
+    results = db.execute(sql, (runner_id,)).fetchall()
+
+    return render_template(
+        "runner/atoz.html",
+        page_title = "A to Z",
+        runners = allowed_runners,
+        selected_runner = runner_id,
+        results = results
+    )
 
 @runner_bp.route("/dashboard")
 @login_required
