@@ -5,18 +5,36 @@
 {% set _ = params.pop('page', None) %}	
 
 {% block content %}
-<div class="container-fluid mt-3">
-  <h4 class="mb-3">
-    🏃 {{ runner_title }} 
-    {% if runner_last_seen_age %}
-      ({{ runner_last_seen_age }})
-    {% endif %}
-  </h4>
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-3">
 
-  <!-- Select Runner button -->
-  <button type="button" class="btn btn-primary btn-sm mb-2" data-bs-toggle="modal" data-bs-target="#runnerModal">
-    Select Runner
-  </button>
+  <!-- Runs title -->
+  <h4 class="mb-0 d-flex align-items-center gap-2">
+    <span>🏃‍</span>
+    <span>{{ runner_title }}'s runs
+      {% if runner_last_seen_age %}
+        ({{ runner_last_seen_age }})
+      {% endif %}
+    </span>
+  </h2>
+
+  <!-- Runner selector form -->
+  <form method="get" class="d-flex align-items-center gap-2">
+    <div class="input-group input-group-sm">
+      <span class="input-group-text"><i class="bi bi-person text-success"></i></span>
+      <select name="runner_id" class="form-select form-select-sm" onchange="this.form.submit()">
+        <option value="">Select runner</option>
+        {% for r in allowed_runners %}
+          <option value="{{ r.id }}"
+            {% if r.id|string == selected_runner|string %}selected{% endif %}>
+            {{ r.name }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+  </form>
+</div>
+
+<div class="container-fluid mt-3">
 
   <!-- Compact toolbar: result count + filters + sorting -->
   <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
@@ -132,7 +150,7 @@
         {% for run in runs %}
         <tr>
           <td class="text-start">
-             <a href="{{ url_for('runner.runs', runner_id=runner_id, year=0, event=run['Event']) }}"
+             <a href="{{ url_for('runner.runs', runner_id=runner_id, year=0, event=run['event']) }}"
                class="mytable-link">
             <span class="badge bg-secondary">
               {{ event_counts[run["event"]] }}
@@ -163,31 +181,6 @@
 
 </div>
 
-<!-- Runner selection modal (dropdown of allowed runners) -->
-<div class="modal fade" id="runnerModal" tabindex="-1" aria-labelledby="runnerModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="runnerModalLabel">Select Runner</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <form id="runnerSelectForm">
-	          <div class="mb-3">
-            <label for="runnerSelectInput" class="form-label">Select Runner</label>
-            <select class="form-select" id="runnerSelectInput">
-              {% for r in allowed_runners %}
-                <option value="{{ r.id }}" {% if r.id == runner_id %}selected{% endif %}>{{ r.name }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <button type="submit" class="btn btn-primary">Show Runs</button>
-        </form>
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- Optional CSS for badges and clear buttons -->
 <style>
 .dropdown-toggle .badge {
@@ -200,16 +193,5 @@
     text-decoration: none;
 }
 </style>
-
-<!-- JS for runner modal -->
-<script>
-document.getElementById('runnerSelectForm').addEventListener('submit', function(e){
-    e.preventDefault();
-    const runnerId = document.getElementById('runnerSelectInput').value;
-    if(runnerId){
-        window.location.href = `/runner/${runnerId}`;
-    }
-});
-</script>
 
 {% endblock %}

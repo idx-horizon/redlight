@@ -99,7 +99,6 @@ ORDER BY d.initial;
         WHERE r1.runner_id = ? AND r2.runner_id = ?
         GROUP BY r1.event
         ORDER BY r1.event
-        LIMIT ? OFFSET ?
     ) AS r
    JOIN (
         SELECT r1.event, MIN(r1.time) AS r1_time

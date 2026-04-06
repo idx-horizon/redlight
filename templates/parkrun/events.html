@@ -1,4 +1,8 @@
 {% extends "base.html" %}
+{% from "macros/pagination.html" import render_pagination %}
+
+{% set params = request.args.to_dict() %}
+{% set _ = params.pop('page', None) %}
 
 {% block content %}
 
@@ -7,124 +11,114 @@
     <!-- Header -->
 
     <!-- Filters -->
-<form method="get" class="mb-3">
 
-    <div class="d-inline-flex align-items-end flex-wrap gap-3">
+<form method="get" class="d-flex flex-wrap align-items-center gap-3 mb-3">
 
-        <div>
-            <label for="country" class="form-label mb-1">Country</label>
-            <select name="country" id="country" class="form-control w-auto">
-                 {% for country in countries %}
-                     <option value="{{ '' if country == 'All' else country }}"
-                         {% if country == selected_country or (country == 'All' and not selected_country) %}
-                         selected
-                         {% endif %}>
-                        {{ country }}
-                    </option>
-                {% endfor %}
-           </select>
-        </div>
+  <!-- Home Event selector -->
+  <div class="d-flex align-items-center gap-1">
+      <button type="button" class="btn btn-outline-success align-self-center" data-bs-toggle="modal" data-bs-target="#eventModal">
+        Set Home
+      </button>
+  </div>
 
-        <div>
-            <label for="search" class="form-label mb-1">Search</label>
-            <input type="text"
-                   name="search"
-                   id="search"
-                   value="{{ search }}"
-                   placeholder="Event name"
-                   class="form-control w-auto">
-        </div>
-
-        <div>
-            <button type="submit" class="btn btn-success btn-sm">
-                Filter
-            </button>
-        </div>
-
+  <!-- Country filter -->
+  <div class="d-flex align-items-center gap-1">
+    <div class="input-group w-auto">
+      <span class="input-group-text"><i class="bi bi-geo-alt"></i></span>
+      <select name="country" class="form-select form-select-sm">
+        <option value="">All countries</option>
+        {% for country in countries if country != 'All' %}
+          <option value="{{ country }}"
+            {% if selected_country == country %}selected{% endif %}>
+            {{ country }}
+          </option>
+        {% endfor %}
+      </select>
     </div>
+  </div>
+
+  <!-- Search field -->
+  <div class="d-flex align-items-center gap-1">
+    <div class="input-group w-auto">
+      <span class="input-group-text"><i class="bi bi-search"></i></span>
+      <input type="text" name="search" class="form-control form-control-sm"
+             placeholder="Event name" value="{{ search }}">
+    </div>
+  </div>
+
+  <!-- Action buttons -->
+  <div class="d-flex gap-2">
+    <button type="submit" class="btn btn-success btn-sm">Filter</button>
+    <a href="{{ url_for('parkrun.events') }}" class="btn btn-outline-secondary btn-sm">Reset</a>
+  </div>
 
 </form>
-    <button id="seriesToggleBtn" class="btn btn-outline-primary">
-       Showing: Normal
-   </button>
-<!--   <div class="d-flex justify-content-between align-items-center mb-3">-->
-       <button class="btn btn-outline-primary" type="button" onclick="openHomeDialog()">
-            Set Home
-       </button>
-<!--    </div>-->
 
-   <P>Total events: {{ total_events }}</p>
+
+    <!-- Left: result count -->
+    <div class="text-muted small me-2">
+      Showing {{ start }}–{{ end }} of {{ total }} event{{ '' if total == 1 else 's' }}
+    </div>
+
     <!-- Events Table -->
-    <table class="table table-striped table-hover table-light">
+    <table class="table table-sm table-striped table-hover table-light">
         <thead class="table-dark">
             <tr>
                 <th>Event</th>
-                <th>Flag</th>
                 <th>Distance (km)</th>
             </tr>
         </thead>
         <tbody>
             {% for event in events %}
             <tr {% if event.event_id == home_event_id %}class="table-success"{% endif %}>
-                <td>{{ event.long_name }}</td>
-                <td>{{ event.flag_emoji }}</td>
+                <td>{{ event.flag_emoji}} {{ event.long_name }}</td>
                 <td>{% if event.distance_km is not none %}{{ "%.1f"|format(event.distance_km) }}{% endif %}</td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
+</div>
+<!-- Pagination -->
+  {{ render_pagination(
+        endpoint='parkrun.events',
+        page=page,
+        pages=pages,
+        params=params,
+        route_params={'country': selected_country, 'search': search}
+  ) }}
 
-    <!-- Pagination -->
-    <nav aria-label="Event pagination">
-        <ul class="pagination">
-            {% if page > 1 %}
-                <li class="page-item">
-                    <a class="page-link" href="{{ url_for('parkrun.events', page=page-1, country=selected_country, search=search) }}">Previous</a>
-                </li>
-            {% endif %}
-            <li class="page-item disabled"><span class="page-link">Page {{ page }} of {{ total_pages }}</span></li>
-            {% if page < total_pages %}
-                <li class="page-item">
-                    <a class="page-link" href="{{ url_for('parkrun.events', page=page+1, country=selected_country, search=search) }}">Next</a>
-                </li>
-            {% endif %}
-        </ul>
-    </nav>
 
 </div> <!-- End container-fluid -->
 
-<!-- Modal for setting home event -->
-<div id="homeModal" class="modal-overlay hidden">
-    <div class="modal-box">
-        <h4>Set Home Event</h4>
-        <form method="post" action="{{ url_for('parkrun.set_home_event') }}">
-            <label>Select event</label>
-            <select name="event_id" id="homeEventSelect" class="form-control" required>
-                {% for event in events %}
-                    <option value="{{ event.event_id }}"
-                        {% if event.event_id == home_event_id %}selected{% endif %}>
-                        {{ event.flag_emoji }} {{ event.long_name }}
-                    </option>
-                {% endfor %}
+<!-- Set Home Event selection modal (dropdown of allowed runners) -->
+<div class="modal fade" id="eventModal" tabindex="-1" aria-labelledby="eventModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="eventModalLabel">Set Home Event</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form method="post" action="{{ url_for('parkrun.set_home_event') }}" id="eventSelectForm">
+                  <div class="mb-3">
+            <select class="form-select" id="eventSelectInput" name="event_id">
+              {% for e in events %}
+                <option value="{{ e.event_id }}" {% if e.event_id == home_event_id %}selected{% endif %}>
+                    {{e.flag_emoji }} {{ e.long_name }}
+                </option>
+              {% endfor %}
             </select>
-            <div class="modal-actions mt-2">
-                <button type="submit" class="btn btn-primary">Save</button>
-                <button type="button" class="btn btn-secondary" onclick="closeHomeDialog()">Cancel</button>
-            </div>
+          </div>
+          <button type="submit" class="btn btn-primary">Save</button>
         </form>
+      </div>
     </div>
+  </div>
 </div>
+
 
 {% endblock %}
 
 {% block scripts %}
-<script>
-function openHomeDialog() {
-    document.getElementById("homeModal").classList.remove("hidden");
-}
-function closeHomeDialog() {
-    document.getElementById("homeModal").classList.add("hidden");
-}
-</script>
 {% endblock %}
 

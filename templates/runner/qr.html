@@ -1,6 +1,29 @@
 {% extends "base.html" %}
 
 {% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-3">
+  <!-- Runs title -->
+  <h4 class="mb-0 d-flex align-items-center gap-2">
+    <span>#️⃣  </span>
+    <span>QR code</span>
+  </h2>
+  <!-- Runner selector form -->
+  <form method="get" class="d-flex align-items-center gap-2">
+    <div class="input-group input-group-sm">
+      <span class="input-group-text"><i class="bi bi-person text-success"></i></span>
+      <select name="runner_id" class="form-select" onchange="this.form.submit()">
+        <option value="">Select runner</option>
+        {% for r in allowed_runners %}
+          <option value="{{ r.id }}"
+            {% if r.id|string == runner_id|string %}selected{% endif %}>
+            {{ r.name }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+  </form>
+</div>
+
 <div class="runner-page">
     <h1>Runner QR Code</h1>
     <p>Runner ID: {{ runner_id }}</p>

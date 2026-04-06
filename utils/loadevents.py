@@ -4,7 +4,7 @@ import requests
 
 # ---- Config ----
 PARKRUN_EVENTS_URL = "https://images.parkrun.com/events.json"
-DB_PATH = "PKRGEO.DB"  # adjust to your path
+DB_PATH = "data/PKRGEO.DB"  # adjust to your path
 
 # ---- Known country mapping ----
 DOMAIN_METADATA = {

@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, current_app, session, redirect
+from flask import Blueprint, render_template, request, current_app, session, redirect, flash, url_for
 from flask_login import login_required, current_user
 import pandas as pd
 import os
@@ -9,6 +9,7 @@ from auth import requires_permission
 from utils.db import get_db
 from utils.user import get_user_settings, update_user_settings
 from utils.geo import get_cancellations, get_map_user_events, get_map_uk_notrun
+from utils.pagination import paginate
 
 BP="parkrun"
 parkrun_bp = Blueprint(BP, __name__, url_prefix=f"/{BP}")
@@ -129,7 +130,7 @@ def dashboard():
 
     return render_template(
         "parkrun/parkrun_dashboard.html",
-        page_title="parkrun",
+        page_title="Dashboard",
         total_parkruns=total_parkruns,
         total_runners=total_runners,
         total_highlighted=total_highlighted,
@@ -322,7 +323,7 @@ def events():
     user_lat = home.get("lat", 51.5074)
     user_lon = home.get("lon",-0.1278)
 
-    country = request.args.get("country") 
+    country = request.args.get("country","United Kingdom") 
     # default to UK if nothing provided
     if not country:
        selected_country = "United Kingdom"
@@ -330,17 +331,13 @@ def events():
     series = request.args.get("series") or "standard"
     search = request.args.get("search", "").strip()
     page = int(request.args.get("page", 1))
-    per_page = 25
-    offset = (page - 1) * per_page
 
     # SQLite snippet for distance
     distance_sql = sqlite_distance_expr(user_lat, user_lon)
 
     # Base query
     query = f"""
-        SELECT *, {distance_sql}
-        FROM vw_events_enriched
-        WHERE 1=1
+        SELECT *, {distance_sql} FROM vw_events_enriched WHERE 1=1
     """
     params = []
 
@@ -363,11 +360,10 @@ def events():
     total_rows = db.execute(count_query, params).fetchone()[0]
 
     # Order by distance
-    query += " ORDER BY distance_km ASC LIMIT ? OFFSET ?"
-    params.extend([per_page, offset])
+    query += " ORDER BY distance_km asc"
 
     events = db.execute(query, params).fetchall()
-    total_pages = (total_rows + per_page - 1) // per_page
+#    total_pages = 1
 
     country_rows = db.execute("""
         SELECT DISTINCT country_name
@@ -382,17 +378,29 @@ def events():
     # Add All at the end
     countries.append("All")
 
+    # -----------------------------
+    # Pagination
+    # -----------------------------
+    page = request.args.get("page", 1, type=int)
+    pagination = paginate(events, page, per_page=10)
+
     return render_template(
         "parkrun/events.html",
         page_title="Events",
-        events=events,
         countries=countries,
         selected_country=country,
         selected_series=series,
         search=search,
-        page=page,
-        total_pages=total_pages,
-        total_events=total_rows,
+
+        events=pagination["items"],
+
+        page=pagination["page"],
+        pages=pagination["pages"],
+
+        total=pagination["total"],
+        start=pagination["start"],
+        end=pagination["end"],
+
         settings_home=home
     )
 
@@ -410,7 +418,7 @@ def set_home_event():
     """, (event_id,)).fetchone()
 
     if not event:
-#        flash("Event not found", "danger")
+        flash("Selected event not found", "warning")
         return redirect(url_for("parkrun.events"))
 
     # load settings
@@ -429,14 +437,11 @@ def set_home_event():
     session["home_lat"] = event["lat"]
     session["home_lon"] = event["lon"]
 
-#    flash(f"Home parkrun set to {event['EventLongName']}", "success")
-    return redirect(request.referrer or url_for("parkrun.events"))
-
-from flask import render_template_string
-import folium
+    flash(f"{event['long_name']} set as event", "success")
+    return redirect(url_for("parkrun.events", page=1))
 
 
-from flask import render_template
+from flask import render_template_string, render_template
 import folium
 from folium.plugins import MarkerCluster, HeatMap, Fullscreen
 from folium import FeatureGroup, GeoJson, Choropleth, CircleMarker

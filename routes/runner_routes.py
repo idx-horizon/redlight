@@ -19,22 +19,42 @@ runner_bp = Blueprint(BP, __name__, url_prefix=f"/{BP}")
 @runner_bp.route("/qr")
 @login_required
 def qr():
-    runner_id = "A184594"
-    qr_data = make_qrcode(runner_id)
-    return render_template("runner/qr.html", runner_id=runner_id, qr_base64=qr_data) 
-
-@runner_bp.route("/", defaults={"runner_id": None})
-@runner_bp.route("/<int:runner_id>")
-@login_required
-def runs(runner_id):
-
     # --- Access control: allowed runners ---
     user_settings = get_user_settings(current_user.username)
     allowed_runners = user_settings.get("allowed_runners",
                                         [{"id": user_settings.get("runner_id"),
                                           "name": "You"}])
 
+    allowed_runners = sorted(allowed_runners, key=lambda r: r['name'])
+
     allowed_runner_ids = [r["id"] for r in allowed_runners]
+    runner_id = request.args.get("runner_id", user_settings["runner_id"], type=int)
+
+    if runner_id not in allowed_runner_ids:
+        return redirect(url_for("runner.qr", runner_id=user_settings.get("runner_id")))
+
+    qr_data = make_qrcode(f"A{runner_id}")
+    return render_template(
+        "runner/qr.html",
+        page_title="QR code",
+        runner_id=runner_id,
+        allowed_runners=allowed_runners,
+        qr_base64=qr_data
+    )
+
+@runner_bp.route("/runs")
+@login_required
+def runs():
+
+    # --- Access control: allowed runners ---
+    user_settings = get_user_settings(current_user.username)
+    allowed_runners = user_settings.get("allowed_runners",
+                                        [{"id": user_settings.get("runner_id"),
+                                          "name": "You"}])
+    allowed_runners = sorted(allowed_runners, key=lambda r: r['name'])
+
+    allowed_runner_ids = [r["id"] for r in allowed_runners]
+    runner_id = request.args.get("runner_id", user_settings["runner_id"], type=int)
 
     if runner_id not in allowed_runner_ids:
         return redirect(url_for("runner.runs", runner_id=user_settings.get("runner_id")))
@@ -48,8 +68,6 @@ def runs(runner_id):
 
     # Convert fields for sorting
     for r in runner_runs:
-#        r["date_obj"] = datetime.strptime(r["Run Date"], "%d/%m/%Y")
-#        r["time_seconds"] = time_to_seconds(r["Time"])
         r["date_obj"] = datetime.strptime(r["run_date"],"%Y-%m-%d")
         r["time_seconds"] = time_to_seconds(r["time"])
     # -----------------------------
@@ -60,9 +78,14 @@ def runs(runner_id):
     events = sorted({r["event"] for r in runner_runs})
 
     event_filter = request.args.get("event")
+    letter_filter = request.args.get("letter", type=str) 
 
     if event_filter:
             runner_runs = [r for r in runner_runs if r["event"] == event_filter]
+
+
+    if letter_filter:
+           runner_runs = [r for r in runner_runs if  r["event"][0] == letter_filter] 
 
     # -----------------------------
     # Year filter
@@ -112,6 +135,7 @@ def runs(runner_id):
         runner_last_seen_age=runner_last_seen_age,
 
         allowed_runners=allowed_runners,
+        selected_runner= runner_id,
 
         runs=pagination["items"],
 
@@ -166,6 +190,8 @@ def atoz():
         "allowed_runners",
         [{"id": user_settings.get("runner_id"), "name": "You"}]
     )
+    allowed_runners = sorted(allowed_runners, key=lambda r: r['name'])
+
     allowed_runner_ids = [r["id"] for r in allowed_runners]
 
     # 👇 get selected runner_id from query string first
@@ -185,8 +211,8 @@ def atoz():
     return render_template(
         "runner/atoz.html",
         page_title = "A to Z",
-        runners = allowed_runners,
-        selected_runner = runner_id,
+        allowed_runners = allowed_runners,
+        runner_id = runner_id,
         results = results
     )
 
@@ -280,19 +306,23 @@ def dashboard():
 @login_required
 def compare():
     # Get query parameters
-    runner1 = request.args.get("runner1")
-    runner2 = request.args.get("runner2")
-    page = int(request.args.get("page", 1))
-    page_size = 10
+    runner1 = request.args.get("runner1",type=int)
+    runner2 = request.args.get("runner2",type=int)
 
     # Build list of allowed runners 
     user_settings = get_user_settings(current_user.username)
     allowed_runners = user_settings.get("allowed_runners",
                                         [{"id": user_settings.get("runner_id"),
                                           "name": "You"}])
+    allowed_runners = sorted(allowed_runners, key=lambda r: r['name'])
 
-    if not runner1:
-        runner1 = allowed_runners[0]['id']
+    allowed_runner_ids = [r["id"] for r in allowed_runners]
+
+    # --- Validate runner_id ---
+    if runner1 is None or runner1 not in allowed_runner_ids:
+        # redirect to default runner
+        runner_id = user_settings.get("runner_id")
+        return redirect(url_for("runner.compare", runner1=runner_id))
 
     # Build runner lookup for template
     runner_lookup = {str(r["id"]): r for r in allowed_runners}
@@ -306,13 +336,11 @@ def compare():
     total_rows = 0
 
     if r1 and r2:
-        offset = (page - 1) * page_size
         # SQL: join results for the two runners for the same events
-
         db = get_db('data/PKRGEO.DB')
 
         sql = get_sql('compare_pb')
-        pb_compare = db.execute(sql, (runner1, runner2, page_size, offset, runner1, runner2)).fetchall()
+        pb_compare = db.execute(sql, (runner1, runner2, runner1, runner2)).fetchall()
 
         # Get total number of shared events for pagination
         sql = get_sql("total_event_pb_count")
@@ -322,11 +350,11 @@ def compare():
         stats = db.execute(sql, (runner1, runner2)).fetchone()
         stats = dict(stats)
 
-
-    total_pages = (total_rows + page_size - 1) // page_size if total_rows else 1
-
-    # Prepare query params for pagination links (page will be replaced)
-    pagination_args = {"runner1": runner1, "runner2": runner2}
+    # -----------------------------
+    # Pagination
+    # -----------------------------
+    page = request.args.get("page", 1, type=int)
+    pagination = paginate(pb_compare, page, per_page=10)
 
     return render_template(
         "runner/compare.html",
@@ -336,11 +364,16 @@ def compare():
         runner2=runner2,
         r1=r1,
         r2=r2,
-        pb_compare=pb_compare,
-        page=page,
-        pages=total_pages,
-        pagination_args=pagination_args,
-        stats=stats
+        stats=stats,
+
+        pb_compare=pagination["items"],
+
+        page=pagination["page"],
+        pages=pagination["pages"],
+
+        total=pagination["total"],
+        start=pagination["start"],
+        end=pagination["end"]
     )
 
 @runner_bp.route("/year")
@@ -348,29 +381,32 @@ def compare():
 def year_summary():
     conn = get_db('data/PKRGEO.DB')
 
-    # Get allowed runners (from current_user)
-#    allowed_runners = current_user.allowed_runners
-
     # --- Access control: allowed runners ---
     user_settings = get_user_settings(current_user.username)
-    runners = user_settings.get("allowed_runners",
+    allowed_runners = user_settings.get("allowed_runners",
                                         [{"id": user_settings.get("runner_id"),
                                           "name": "You"}])
+    allowed_runners = sorted(allowed_runners, key=lambda r: r['name'])
 
-    runner_ids = [r["id"] for r in runners]
+    allowed_runner_ids = [r["id"] for r in allowed_runners]
 
     # Get selected runner from query string
-    runner_id = int(request.args.get("runner_id",0))
+    runner_id = request.args.get("runner_id",type=int)
+
+    # --- Validate runner_id ---
+    if runner_id is None or runner_id not in allowed_runner_ids:
+        # redirect to default runner
+        runner_id = user_settings.get("runner_id")
+        return redirect(url_for("runner.year_summary", runner_id=runner_id))
 
     # Default to first allowed runner
-    if runner_id==0 and runners:
-        runner_id = runners[0]["id"]
+#    if runner_id==0 and allowed_runners:
+#        runner_id = allowed_runners[0]["id"]
 
-    current_app.logger.info(f"** RunnerID: {runner_id}")
     # Security check
-    if runner_id not in runner_ids:
-        current_app.logger.info(f'** {type(runner_id)} - {runner_id}')
-        abort(403)
+#    if runner_id not in runner_ids:
+#        current_app.logger.info(f'** {type(runner_id)} - {runner_id}')
+#        abort(403)
 
     # Query the view
     rows = conn.execute("""
@@ -384,6 +420,6 @@ def year_summary():
         "runner/year.html",
         page_title="Year Summary",
         rows=rows,
-        selected_runner=runner_id,
-        runners=runners
+        runner_id=runner_id,
+        allowed_runners=allowed_runners
     )
