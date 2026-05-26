@@ -19,10 +19,10 @@ def handle_command(chat_id, text):
         send_telegram(chat_id, "✅ Server running")
 
     elif text == "/lastrun":
-#        conn = sqlite3.connect("data/PKRGEO.DB")
-        conn = get_db("data/PKRGEO.DB")
+        conn = sqlite3.connect("data/PKRGEO.DB")
+#        conn = get_db("data/PKRGEO.DB")
         row = conn.execute("""
-            SELECT *
+            SELECT run_date, event, time
             FROM runs
             WHERE runner_id = 184594
             ORDER BY run_date DESC

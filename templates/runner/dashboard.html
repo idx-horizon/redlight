@@ -1,28 +1,30 @@
 {% extends "base.html" %}
 
 {% block content %}
-
-<div class="container-fluid mt-4">
-
-<!-- Header -->
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="mb-0">📊 Runner Dashboard</h2>
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-3">
+  <!-- Runs title -->
+  <h4 class="mb-0 d-flex align-items-center gap-2">
+    <span>📈 </span>
+    <span>Runner Dashboard</span>
+  </h2>
+  <!-- Runner selector form -->
+  <form method="get" class="d-flex align-items-center gap-2">
+    <div class="input-group input-group-sm">
+      <span class="input-group-text"><i class="bi bi-person text-success"></i></span>
+      <select name="runner_id" class="form-select" onchange="this.form.submit()">
+        <option value="">Select runner</option>
+        {% for r in allowed_runners %}
+          <option value="{{ r.id }}"
+            {% if r.id|string == runner_id|string %}selected{% endif %}>
+            {{ r.name }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+  </form>
 </div>
 
-<!-- Runner Selector -->
-<form method="get" class="mb-4">
-    <div class="row align-items-center">
-        <div class="col-md-4">
-            <select name="runner_id" class="form-select" onchange="this.form.submit()">
-                {% for r in runners %}
-                <option value="{{ r.id }}" {% if r.id == selected_runner %}selected{% endif %}>
-                    {{ r.name }}
-                </option>
-                {% endfor %}
-            </select>
-        </div>
-    </div>
-</form>
+<div class="container-fluid mt-4">
 
 {% if stats %}
 <!-- Stat Cards -->

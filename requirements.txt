@@ -2,6 +2,8 @@ Flask==3.1.1
 flask_login
 flask-sqlalchemy
 flask-wtf
+flask-minify
+flask-compress
 python-dotenv==1.0.0
 pytest
 pylint

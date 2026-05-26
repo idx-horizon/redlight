@@ -224,7 +224,7 @@ def dashboard():
     # runner selection
     # -----------------------------------
     user_settings = get_user_settings(current_user.username)
-    runners = user_settings.get("allowed_runners")
+    allowed_runners = user_settings.get("allowed_runners")
     runner_id = request.args.get("runner_id", type=int)
 
     if not runner_id:
@@ -297,8 +297,8 @@ def dashboard():
         pb_progression=pb_progression,
         years=years,
         yearly_counts=yearly_counts,
-        runners=runners,
-        selected_runner=runner_id,
+        allowed_runners=allowed_runners,
+        runner_id=runner_id,
         pb_flags=pb_flags
     )
 

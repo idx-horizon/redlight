@@ -169,14 +169,14 @@ def fill_missing_weather():
     
 if __name__ == "__main__":
 #     === Example usage ===
-#    lon, lat = [-0.148616, 50.841557]
-#    data = get_weather(event_name='Test', lat=lat, lon=lon, run_dt="2026-01-04")  # London
-#    print(data)
+    lon, lat = [-0.148616, 50.841557]
+    data = call_weather_api(event='Test', lat=lat, lon=lon, run_dt="2026-01-04")  # London
+    print(data)
 
-    with open('data/runners/184594.json','r',encoding='utf-8') as f:
-        runner_runs = json.loads(f.read())[1]['runs'][0:1000]
+#    with open('data/runners/184594.json','r',encoding='utf-8') as f:
+#        runner_runs = json.loads(f.read())[1]['runs'][0:1000]
 
-    print(runner_runs[0])
-
-    for r in runner_runs:
-        print(get_weather(r['short_name'], r['Run Date']))
+#    print(runner_runs[0])
+#
+#    for r in runner_runs:
+#        print(get_weather(r['short_name'], r['Run Date']))

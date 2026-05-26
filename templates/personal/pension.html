@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+    body {
+        background: #f8f9fa;
+    }
+
+    .timeline-row {
+        display: flex;
+        margin-bottom: 1px;
+    }
+
+    .timeline-label {
+        width: 250px;
+        font-size: 0.9rem;
+        padding-right: 10px;
+    }
+
+    .timeline-bar-container {
+        position: relative;
+        flex-grow: 1;
+        height: 34px;
+        background: #e9ecef;
+        border-radius: 6px;
+    }
+
+    .timeline-bar {
+        position: absolute;
+        height: 100%;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+        overflow: hidden;
+        font-size: 0.75rem;
+    }
+
+    .timeline-bar span {
+        padding-left: 6px;
+        white-space: nowrap;
+    }
+
+    /* Benefit colours */
+    .alpha { background: #0d6efd; color: white; }
+    .classic { background: #6c757d; color: white; }
+    .classicl { background: green; colour: white; }
+    .nuvos { background: #198754; color: white; }
+    .nuvosl { background: #20c997; color: black; }
+    .pre97 { background: #fd7e14; color: black; }
+
+    /* Breaks inside bars */
+    .timeline-break {
+        position: absolute;
+        height: 100%;
+        background: repeating-linear-gradient(
+            45deg,
+            black,
+            black 4px,
+            white 4px,
+            white 8px
+        );
+        opacity: 0.7;
+    }
+
+    /* Gaps between services */
+    .gap-layer {
+        position: absolute;
+        top: 0;
+        left: 250px;
+        right: 0;
+        height: 100%;
+        pointer-events: none;
+    }
+
+    .timeline-gap {
+        display: none
+    }
+
+    .xxtimeline-gap {
+        position: absolute;
+        height: 100%;
+        background: repeating-linear-gradient(
+            45deg,
+            red,
+            red 6px,
+            white 6px,
+            white 12px
+        );
+        opacity: 0.5;
+    }
+
+    /* Popover */
+    .popover {
+        max-width: 500px;
+    }
+
+    .popover pre {
+        font-size: 0.75rem;
+        white-space: pre-wrap;
+        margin: 0;
+    }
+
+    /* Delta colouring */
+    .delta-ok { color: #198754; }
+    .delta-warn { color: #fd7e14; font-weight: 600; }
+    .delta-bad { color: #dc3545; font-weight: 700; }
+
+    /* Table tweaks */
+    table td, table th {
+        vertical-align: middle;
+    }
+</style>
+
+<div class="container py-4">
+
+    <!-- HEADER -->
+    <div class="mb-3">
+        <h4>{{ data._payload.Description }}</h4>
+    </div>
+
+    <!-- TIMELINE -->
+    <div class="position-relative mt-4">
+
+        <div class="timeline-gap-layer">
+            {% for g in gaps %}
+               <div class="timeline-gap"
+                    style="left: {{ g.start_pos }}%; width: {{ g.width }}%;">
+               </div>
+            {% endfor %}
+        </div>
+
+        {% for s in services %}
+        <div class="timeline-row">
+
+            <div class="timeline-label">
+                <strong>{{ s.employer }}</strong><br>
+                <small class="text-muted">{{ s.start|datetimeformat }} → {{ s.end|datetimeformat }}</small></br>
+                <strong>{{ s.type}}</strong>
+               <small class="text-muted">{{s.raw.ReckonableYears }}/{{s.raw.ReckonableUnits}} Breaks: {{ s.break_pct }}%</small>
+            </div>
+
+            <div class="timeline-bar-container">
+
+                <div class="timeline-bar {{ s.type|lower }}"
+                     style="left: {{ s.start_pos }}%; width: {{ s.width }}%;"
+                     data-bs-toggle="popover"
+                     data-json='{{ s.clean_raw | tojson }}'>
+
+                    <span>
+             <!--           {{ s.start|datetimeformat }} → {{ s.end|datetimeformat }} -->
+                    </span>
+
+                    <!-- BREAKS INSIDE BAR -->
+                    {% for b in s.breaks %}
+                    <div class="timeline-break"
+                         style="left: {{ ((b.start_pos - s.start_pos) / s.width) * 100 }}%;
+                                width: {{ (b.width / s.width) * 100 }}%;">
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- TABLE -->
+    <hr class="my-3">
+
+    <h4 class="mb-3">Service Table</h4>
+
+    <table class="table table-sm table-striped table-hover align-middle">
+        <thead class="table-light">
+        <tr>
+            <th>Employer</th>
+            <th>Benefit</th>
+            <th>From</th>
+            <th>To</th>
+            <th class="text-end">Years</th>
+            <th class="text-end">Units</th>
+            <th>Breaks</th>
+        </tr>
+        </thead>
+
+        <tbody>
+
+        {% for s in services %}
+
+        {% set units = s.raw.ReckonableUnits or 0 %}
+        {% set days = (s.end | todatetime - s.start | todatetime).days %}
+        {% set delta = units - days %}
+
+        <tr>
+            <td>{{ s.raw.EmployerName }}</td>
+
+            <td>
+                <span class="badge {{ s.type|lower }}">
+                    {{ s.raw.BenefitType }}
+                </span>
+            </td>
+
+            <td>{{ s.start|datetimeformat }}</td>
+            <td>{{ s.end|datetimeformat }}</td>
+
+            <td class="text-end">{{ s.raw.ReckonableYears or "" }}</td>
+            <td class="text-end">{{ units }}</td>
+
+            <td>
+                {% if s.raw.Breaks %}
+                <details>
+                    <summary class="text-primary small">
+                        {{ s.raw.Breaks|length }} breaks
+                    </summary>
+
+                    <ul class="small mt-2 mb-0">
+                        {% for b in s.raw.Breaks %}
+                        <li>
+                            {{ b.FromDate|datetimeformat }} →
+                            {{ b.ToDate|datetimeformat }}
+                            ({{ b.BreakType }})
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </details>
+                {% endif %}
+            </td>
+
+        </tr>
+
+        {% endfor %}
+
+        </tbody>
+    </table>
+
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+
+<script>
+document.querySelectorAll('[data-bs-toggle="popover"]').forEach(el => {
+
+    const raw = JSON.parse(el.getAttribute("data-json"))
+
+    const content = `
+        <div>
+            <div><strong>${raw.EmployerName || ""}</strong></div>
+            <div class="text-muted small mb-2">
+                ${raw.BenefitType || ""} |
+                ${raw.FromDate || ""} → ${raw.ToDate || "Present"}
+            </div>
+            <pre>${JSON.stringify(raw, null, 2)}</pre>
+        </div>
+    `
+
+    new bootstrap.Popover(el, {
+        trigger: 'hover',
+        placement: 'top',
+        container: 'body',
+        html: true,
+        content: content,
+        title: "Service Details"
+    })
+})
+</script>
+
+{% endblock %}
+

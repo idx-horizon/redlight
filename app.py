@@ -1,6 +1,7 @@
 import os, sys
 import json
 import time
+from datetime import datetime
 from flask import Flask, session, render_template, redirect, url_for, flash, request, current_app, got_request_exception, abort
 from dotenv import load_dotenv
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin
@@ -135,6 +136,17 @@ def detect_scanning():
             app.logger.info(f"IP:{ip} [SECURITY] Suspicious request detected: Path={request.path}, Params={request.values}")
 
 
+
+@app.template_filter('datetimeformat')
+def datetimeformat(value):
+    if not value:
+        return ""
+
+    return datetime.fromisoformat(value).strftime("%d-%b-%Y")
+
+@app.template_filter('todatetime')
+def todatetime(value):
+    return datetime.fromisoformat(value)
 
 # log uncaught exceptions with full traceback
 def log_exception(sender, exception, **extra):

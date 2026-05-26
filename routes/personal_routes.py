@@ -94,6 +94,38 @@ def alcohol():
         end_date=end_date
     )
 
+@personal_bp.route("/api/bp", methods=["POST"])
+def ingest_bp():
+
+    if request.headers.get("X-API-Key") != "my-jff-red-key":
+        return jsonify({"error": "Unauthorized"}), 401
+
+    raw = request.get_data(as_text=True)
+
+    current_app.logger.info(f"RAW BODY:\n{raw}")
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No JSON received"}), 400
+
+    db = get_db(os.environ.get('DB_HEALTH'))
+
+    parsed=[]
+
+    for sample in data['records'].split():
+        r=json.loads(sample)
+        parsed.append((
+            datetime.strptime(r["sample_date"], "%Y-%m-%d").date(),
+            int(r["sample_value"]),
+            datetime.strptime(data['meta_extract_dt'], "%Y-%m-%d %H:%M:%S"),
+            data['meta_source'],
+            data['meta_version']
+        ))
+
+
+    return jsonify({"status": "ok", "records": len(parsed)})
+
 
 @personal_bp.route("/api/alcohol", methods=["POST"])
 def ingest_alcohol():
@@ -206,3 +238,158 @@ def finance():
     except Exception as e:
         current_app.logger.exception("Google Sheet read failed")
         return {"error": str(e)}, 500
+
+
+# PENSION SERVICE
+
+def load_data():
+    with open("data/pension/service.json", "r") as f:
+        return json.load(f)
+
+def sanitise_service(raw):
+    if isinstance(raw, dict):
+        return {
+            k: sanitise_service(v)
+            for k, v in raw.items()
+            if k not in ["_links", "_uid"]
+        }
+
+    if isinstance(raw, list):
+        return [sanitise_service(v) for v in raw]
+
+    return raw
+
+
+def normalise_services(services):
+
+    normalised = []
+
+    for s in services:
+        start = s.get("FromDate")
+        end = s.get("ToDate") or datetime.today().strftime("%Y-%m-%d")
+
+        breaks = []
+
+        for b in s.get("Breaks", []):
+            breaks.append({
+                "start": b["FromDate"],
+                "end": b["ToDate"],
+                "type": b.get("BreakType"),
+                "raw": b
+            })
+
+        normalised.append({
+            "start": start,
+            "end": end,
+            "employer": s.get("EmployerName"),
+            "employerCode": s.get("EmployerCode"),
+            "type": s.get("BenefitType"),
+            "breaks": breaks,
+            "raw": s
+        })
+
+    normalised.sort(key=lambda x: x["start"])
+
+    return normalised
+
+def detect_gaps(services):
+
+    gaps = []
+    for i in range(len(services) - 1):
+        if services[i]["end"] < services[i+1]["start"]:
+            gaps.append({
+                "start": services[i]["end"],
+                "end": services[i+1]["start"]
+            })
+
+    return gaps
+
+def add_positions(services, gaps):
+
+    dates = []
+
+    for s in services:
+        dates.append(datetime.fromisoformat(s["start"]))
+        dates.append(datetime.fromisoformat(s["end"]))
+
+        for b in s["breaks"]:
+            dates.append(datetime.fromisoformat(b["start"]))
+            dates.append(datetime.fromisoformat(b["end"]))
+
+    min_date = min(dates)
+    max_date = max(dates)
+    total_days = (max_date - min_date).days or 1
+
+    def to_percent(date_str):
+        d = datetime.fromisoformat(date_str)
+
+        return ((d - min_date).days / total_days) * 100
+
+    for s in services:
+        s["start_pos"] = to_percent(s["start"])
+        s["width"] = to_percent(s["end"]) - s["start_pos"]
+
+        service_days = (
+            datetime.fromisoformat(s["end"]) -
+            datetime.fromisoformat(s["start"])
+        ).days or 1
+
+        break_days = 0
+
+        for b in s["breaks"]:
+            b_start = datetime.fromisoformat(b["start"])
+            b_end = datetime.fromisoformat(b["end"])
+            b["start_pos"] = to_percent(b["start"])
+            b["width"] = to_percent(b["end"]) - b["start_pos"]
+            break_days += (b_end - b_start).days
+
+        s["break_pct"] = round((break_days / service_days) * 100, 1)
+
+    for g in gaps:
+        g["start_pos"] = to_percent(g["start"])
+        g["width"] = to_percent(g["end"]) - g["start_pos"]
+
+
+def enrich_service(service):
+    mapping = {
+        "HO": ("deptA", "Department A"),
+        "NPIA": ("deptB", "Department B"),
+        "HAHO": ("deptC", "Department C"),
+        "HOFF": ("deptD", "Department D"),
+    }
+
+    code = service["employerCode"]
+
+    if code in mapping:
+        service["dispEmployerCode"] = mapping[code][0]
+        service["dispEmployerName"] = mapping[code][1]
+    else:
+        service["dispEmployerCode"] = code
+        service["dispEmployerName"] = service.get("EmployerName")
+
+    return service
+
+@personal_bp.route("/pension")
+@login_required
+def pension():
+
+    data = load_data()
+
+    services = normalise_services(data.get("Services", []))
+
+    for s in services:
+        enrich_service(s)   # adds dispEmployerCode / dispEmployerName
+
+    for s in services:
+        s["clean_raw"] = sanitise_service(s["raw"])
+
+    gaps = detect_gaps(services)
+    add_positions(services, gaps)
+
+    return render_template(
+        "personal/pension.html",
+        data=data,
+        services=services,
+        gaps=gaps
+
+    )
