@@ -16,6 +16,13 @@ from auth import requires_permission
 BP="personal"
 personal_bp = Blueprint( BP, __name__, url_prefix=f"/{BP}")
 
+@personal_bp.route('/box_breathing')
+def box_breathing():
+    return render_template(
+        "personal/box_breathing.html",
+        page_title="Box Breathing",
+    )
+
 
 @personal_bp.route("/alcohol")
 @login_required

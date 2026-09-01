@@ -65,6 +65,7 @@
         <thead class="table-dark">
             <tr>
                 <th>Event</th>
+                <th>Region</th>
                 <th>Distance (km)</th>
             </tr>
         </thead>
@@ -72,6 +73,7 @@
             {% for event in events %}
             <tr {% if event.event_id == home_event_id %}class="table-success"{% endif %}>
                 <td>{{ event.flag_emoji}} {{ event.long_name }}</td>
+                <td>{{ event.county }} {{event.uk_region }}</td>
                 <td>{% if event.distance_km is not none %}{{ "%.1f"|format(event.distance_km) }}{% endif %}</td>
             </tr>
             {% endfor %}
